@@ -3,12 +3,12 @@ support for OPENJSON sql server syntax with linq to entities through EFCore
 
 # Context
 - Your project use EF Core (2.1.1).
-- You need some JSON features of SQL Server (JSON_VALUE, JSON_QUERY, OPENJSON).
-- You don't want use FromSql
-You can use this extension library with a new extension method : ValueFromOpenJson. 
+- You need some JSON features of SQL Server (```JSON_VALUE```, ```JSON_QUERY```, ```OPENJSON```).
+- You don't want to use FromSql
+You can use this extension library with a new extension method ```ValueFromOpenJson```. 
 
 # Configuration
-You have to declare some fake DbSet (due to actual limitation of EFCore) :
+You have to declare some fake ```DbSet``` (due to actual limitation of EFCore) :
 ```csharp
 protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
@@ -28,7 +28,7 @@ optionsBuilder.UseExtensions(extensions =>
 ```
 
 # Usages
-If you want EF Core generate valid SQL with right usage of OPENJSON, you have to use the method ValueFromOpenJson on a fake DbSet of JsonResult. You have to declare this DbSet as a variable :
+If you want to EF Core generate valid SQL with right usage of ```OPENJSON```, you have to use the method ```ValueFromOpenJson``` on a fake DbSet of ```JsonResult```. You have to declare this DbSet as a variable :
 ```csharp
 var json = appContext.Set<JsonResult<string>>();
 ```
@@ -37,7 +37,7 @@ Next you can query a real DbSet (mapped to an existing table) :
 var query = appContext.Persons
     .Where(p => json.ValueFromOpenJson(p.Kinds, "$").Select(jr => jr.Value).Contains("kind2"));
 ```
-The variable query is a classic IQueryable, you trigger the SQL Command via ToList or ToListAsync from EFCore :
+The variable query is a classic ```IQueryable```, you trigger the SQL Command with ```ToList``` or ```ToListAsync``` from EFCore :
 ```csharp
 var result = await query.ToListAsync();
 ```
