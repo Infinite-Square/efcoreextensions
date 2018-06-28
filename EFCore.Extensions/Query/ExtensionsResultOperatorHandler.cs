@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using System;
@@ -38,6 +39,9 @@ namespace EFCore.Extensions.Query
         private static PropertyInfo QuerySourcesRequiringMaterialization = typeof(QueryCompilationContext)
             .GetProperty(nameof(QuerySourcesRequiringMaterialization), BindingFlags.NonPublic | BindingFlags.Instance);
 
+        private static FieldInfo QuerySourceMappingLookup = typeof(QuerySourceMapping)
+            .GetField("_lookup", BindingFlags.NonPublic | BindingFlags.Instance);
+
         private static Expression HandleValueFromOpenJson(
             EntityQueryModelVisitor entityQueryModelVisitor,
             ValueFromOpenJsonOperator valueFromOpenJsonOperator,
@@ -51,22 +55,40 @@ namespace EFCore.Extensions.Query
             {
                 if (me.Expression is ParameterExpression pe)
                 {
-                    if (entityQueryModelVisitor.QueryCompilationContext.QuerySourceMapping.ContainsMapping(queryModel.MainFromClause))
+                    var mapping = entityQueryModelVisitor.QueryCompilationContext.QuerySourceMapping;
+                    if (mapping.ContainsMapping(queryModel.MainFromClause))
                     {
-                        if (QuerySourcesRequiringMaterialization.GetValue(entityQueryModelVisitor.QueryCompilationContext) is ISet<IQuerySource> sources && sources != null)
+                        if (QuerySourceMappingLookup.GetValue(mapping) is IDictionary<IQuerySource, Expression> lookup)
                         {
-                            var source = sources.FirstOrDefault(s => s.ItemType == pe.Type && s.ItemName == pe.Name);
+                            var source = lookup.Keys.FirstOrDefault(s => s.ItemType == pe.Type && s.ItemName == pe.Name);
                             if (source != null)
                             {
-                                var exp = entityQueryModelVisitor.QueryCompilationContext.QuerySourceMapping.GetExpression(source);
+
+                                var exp = mapping.GetExpression(source);
                                 if (exp != null)
                                 {
+                                    if (exp.Type == typeof(ValueBuffer))
+                                    {
+                                        var entityType = entityQueryModelVisitor.QueryCompilationContext.Model.FindEntityType(pe.Type);
+                                        if (entityType != null)
+                                        {
+                                            var prop = entityType.FindProperty(me.Member as PropertyInfo);
+                                            if (prop != null)
+                                            {
+                                                var json = entityQueryModelVisitor.BindMemberToValueBuffer(me, exp);
+                                                return Expression.Call(valueFromOpenJsonOperator.ParseInfo.ParsedExpression.Method
+                                                    , valueFromOpenJsonOperator.ParseInfo.ParsedExpression.Arguments[0]
+                                                    , json
+                                                    , valueFromOpenJsonOperator.Path);
+                                            }
+                                        }
+                                    }
+
                                     var meexp = Expression.MakeMemberAccess(exp, me.Member);
-                                    var test = Expression.Call(ExtensionsDbFunctionsExtensions.ValueFromOpenJsonMethod.MakeGenericMethod(typeof(string))
+                                    return Expression.Call(valueFromOpenJsonOperator.ParseInfo.ParsedExpression.Method
                                         , valueFromOpenJsonOperator.ParseInfo.ParsedExpression.Arguments[0]
                                         , meexp
                                         , valueFromOpenJsonOperator.Path);
-                                    return test;
                                 }
                             }
                         }

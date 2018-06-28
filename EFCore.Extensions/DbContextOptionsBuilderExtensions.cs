@@ -1,4 +1,6 @@
-﻿using EFCore.Extensions.Query.Internal;
+﻿using EFCore.Extensions.Query;
+using EFCore.Extensions.Query.Internal;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using System;
 
@@ -6,21 +8,28 @@ namespace Microsoft.EntityFrameworkCore
 {
     public static class DbContextOptionsBuilderExtensions
     {
-        public static void UseExtensions(this DbContextOptionsBuilder optionsBuilder, Action<ExtensionsDbContextOptionsBuilder> configure)
+        private static void UseExtensions(this DbContextOptionsBuilder optionsBuilder)
         {
-            (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder(optionsBuilder));
             optionsBuilder.ReplaceService<INodeTypeProviderFactory, ExtensionsMethodInfoBasedNodeTypeRegistryFactory>();
             //optionsBuilder.ReplaceService<IResultOperatorHandler, ExtensionsResultOperatorHandler>();
             //optionsBuilder.ReplaceService<IQueryAnnotationExtractor, ExtensionsQueryAnnotationExtractor>();
+
+            optionsBuilder.ReplaceService<IResultOperatorHandler, ExtensionsResultOperatorHandler>();
+            optionsBuilder.ReplaceService<IQueryAnnotationExtractor, ExtensionsQueryAnnotationExtractor>();
+            optionsBuilder.ReplaceService<IRelationalResultOperatorHandler, ExtensionsRelationalResultOperatorHandler>();
+        }
+
+        public static void UseExtensions(this DbContextOptionsBuilder optionsBuilder, Action<ExtensionsDbContextOptionsBuilder> configure)
+        {
+            (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder(optionsBuilder));
+            optionsBuilder.UseExtensions();
         }
 
         public static void UseExtensions<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder, Action<ExtensionsDbContextOptionsBuilder<TContext>> configure)
             where TContext : DbContext
         {
             (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder<TContext>(optionsBuilder));
-            optionsBuilder.ReplaceService<INodeTypeProviderFactory, ExtensionsMethodInfoBasedNodeTypeRegistryFactory>();
-            //optionsBuilder.ReplaceService<IResultOperatorHandler, ExtensionsResultOperatorHandler>();
-            //optionsBuilder.ReplaceService<IQueryAnnotationExtractor, ExtensionsQueryAnnotationExtractor>();
+            optionsBuilder.UseExtensions();
         }
     }
 

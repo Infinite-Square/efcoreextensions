@@ -25,9 +25,9 @@ namespace ConsoleApp1
                 {
                     appContext.Persons.AddRange(new[]
                     {
-                        new Person { Id = Guid.NewGuid(), Name = "p1", Kinds = JsonConvert.SerializeObject(new string[] { }) },
-                        new Person { Id = Guid.NewGuid(), Name = "p2", Kinds = JsonConvert.SerializeObject(new [] { "kind1", "kind2" }) },
-                        new Person { Id = Guid.NewGuid(), Name = "p2", Kinds = JsonConvert.SerializeObject(new [] { "kind1" }) },
+                        new Person { Id = Guid.NewGuid(), Name = "p1", KindsList = JsonConvert.SerializeObject(new string[] { }) },
+                        new Person { Id = Guid.NewGuid(), Name = "p2", KindsList = JsonConvert.SerializeObject(new [] { "kind1", "kind2" }) },
+                        new Person { Id = Guid.NewGuid(), Name = "p2", KindsList = JsonConvert.SerializeObject(new [] { "kind1" }) },
                     });
                     await appContext.SaveChangesAsync();
                     count = await appContext.Persons.CountAsync();
@@ -35,13 +35,17 @@ namespace ConsoleApp1
 
                 var json = appContext.Set<JsonResult<string>>();
                 var query = appContext.Persons
-                    .Where(p => json.ValueFromOpenJson(p.Kinds, "$").Select(jr => jr.Value).Contains("kind2"));
+                    .Where(p => json.ValueFromOpenJson(p.KindsList, "$").Select(jr => jr.Value).Contains("kind2"));
 
+                count = await query.CountAsync();
                 var result = await query.ToListAsync();
                 //var result = query.ToList();
-                Console.WriteLine(result.Count);
 
+                Console.WriteLine(result.Count);
                 Console.WriteLine($"count: {count}");
+
+                if (count != result.Count)
+                    throw new Exception();
             }
         }
     }

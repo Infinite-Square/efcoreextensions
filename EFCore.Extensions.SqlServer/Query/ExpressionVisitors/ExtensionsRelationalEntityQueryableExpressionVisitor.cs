@@ -57,7 +57,7 @@ namespace EFCore.Extensions.SqlServer.Query.ExpressionVisitors
 
             if (valueFromOpenJsonAnnotation != null)
             {
-                if (valueFromOpenJsonAnnotation.Json.NodeType == ExpressionType.MemberAccess)
+                if (valueFromOpenJsonAnnotation.Json.NodeType == ExpressionType.MemberAccess && valueFromOpenJsonAnnotation.Json is MemberExpression me)
                 {
                     var entityType = relationalQueryCompilationContext.FindEntityType(_querySource)
                              ?? _model.FindEntityType(elementType);
@@ -72,11 +72,16 @@ namespace EFCore.Extensions.SqlServer.Query.ExpressionVisitors
                                     ?? _querySource.ItemName);
                     Func<IQuerySqlGenerator> querySqlGeneratorFunc = selectExpression.CreateDefaultQuerySqlGenerator;
 
-                    selectExpression.AddTable(
-                        new ValueFromOpenJsonExpression(_querySource,
+                    var memberEntityType = relationalQueryCompilationContext.Model.FindEntityType(me.Expression.Type);
+                    var memberProperty = memberEntityType.FindProperty(me.Member as PropertyInfo);
+
+                    var expr = new ValueFromOpenJsonExpression(_querySource,
                             valueFromOpenJsonAnnotation.Json,
                             valueFromOpenJsonAnnotation.Path,
-                            tableAlias));
+                            tableAlias);
+                    expr.PropertyMapping[valueFromOpenJsonAnnotation.Json] = memberProperty;
+
+                    selectExpression.AddTable(expr);
 
                     //var trimmedSql = valueFromOpenJsonAnnotation.Sql.TrimStart('\r', '\n', '\t', ' ');
                     var useQueryComposition = true;

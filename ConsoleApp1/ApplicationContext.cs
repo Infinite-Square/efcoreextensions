@@ -9,7 +9,7 @@ namespace ConsoleApp1
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
-        public string Kinds { get; set; }
+        public string KindsList { get; set; }
     }
 
     public class ApplicationContext : DbContext
@@ -24,8 +24,8 @@ namespace ConsoleApp1
 
             optionsBuilder.UseExtensions(extensions =>
             {
-                //extensions.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=testdbapp2;Trusted_Connection=True;");
-                extensions.UseInMemoryDatabase("inmemory");
+                extensions.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=testdbapp2;Trusted_Connection=True;");
+                //extensions.UseInMemoryDatabase("inmemory");
             });
         }
 
@@ -35,6 +35,7 @@ namespace ConsoleApp1
             modelBuilder.Entity<JsonResult<string>>();
             modelBuilder.Entity<JsonResult<int>>();
             modelBuilder.Entity<JsonResult<bool>>();
+            modelBuilder.Entity<Person>().Property(p => p.KindsList).HasColumnName("Kinds");
         }
 
         private class LoggerProvider : ILoggerProvider

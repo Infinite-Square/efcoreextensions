@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using EFCore.Extensions.SqlServer.Query.Expressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.Sql;
@@ -85,6 +86,16 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             if (path == null) throw new ArgumentNullException(nameof(path));
             if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
+            string pathValue = null;
+            if (path != null)
+            {
+                if (path.NodeType == ExpressionType.Constant && path is ConstantExpression ce)
+                {
+                    var value = ce.Value;
+                    pathValue = GenerateSqlLiteral(value);
+                }
+            }
+
             string[] substitutions = null;
 
             // ReSharper disable once SwitchStatementMissingSomeCases
@@ -93,6 +104,20 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                 case ExpressionType.MemberAccess:
                 {
                     var arg = (MemberExpression)json;
+
+                    if (valueFromOpenJsonExpression.PropertyMapping.TryGetValue(json, out var prop))
+                    {
+                        var columnName = prop.Relational().ColumnName;
+                        var table = SelectExpression.Tables.First();
+                        var column = new ColumnExpression(columnName, prop, table);
+
+                        var fsql = "SELECT [Key], [Value], [Type] FROM OPENJSON(";
+                        Sql.AppendLines(fsql);
+                        VisitColumn(column);
+                        Sql.Append($",{pathValue ?? "N'$'"})");
+                        return;
+                    }
+
                     var projection = SelectExpression.Projection
                         .OfType<ColumnExpression>()
                         .FirstOrDefault(cp => cp.Type == arg.Type
@@ -206,15 +231,7 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                 }
             }
 
-            string pathValue = null;
-            if (path != null)
-            {
-                if (path.NodeType == ExpressionType.Constant && path is ConstantExpression ce)
-                {
-                    var value = ce.Value;
-                    pathValue = GenerateSqlLiteral(value);
-                }
-            }
+
 
             var sql = "SELECT [Key], [Value], [Type] FROM OPENJSON({0}, {1})";
 
