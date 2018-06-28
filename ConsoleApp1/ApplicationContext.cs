@@ -32,9 +32,6 @@ namespace ConsoleApp1
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<JsonResult<string>>();
-            modelBuilder.Entity<JsonResult<int>>();
-            modelBuilder.Entity<JsonResult<bool>>();
             modelBuilder.Entity<Person>().Property(p => p.KindsList).HasColumnName("Kinds");
         }
 

@@ -1,5 +1,7 @@
-﻿using EFCore.Extensions.Query;
+﻿using EFCore.Extensions.Infrastructure;
+using EFCore.Extensions.Query;
 using EFCore.Extensions.Query.Internal;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using System;
@@ -17,6 +19,7 @@ namespace Microsoft.EntityFrameworkCore
             optionsBuilder.ReplaceService<IResultOperatorHandler, ExtensionsResultOperatorHandler>();
             optionsBuilder.ReplaceService<IQueryAnnotationExtractor, ExtensionsQueryAnnotationExtractor>();
             optionsBuilder.ReplaceService<IRelationalResultOperatorHandler, ExtensionsRelationalResultOperatorHandler>();
+            optionsBuilder.ReplaceService<IModelCustomizer, ExtensionsRelationalModelCustomizer>();
         }
 
         public static void UseExtensions(this DbContextOptionsBuilder optionsBuilder, Action<ExtensionsDbContextOptionsBuilder> configure)
