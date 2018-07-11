@@ -81,17 +81,7 @@ namespace Microsoft.EntityFrameworkCore
             }
         }
 
-        public static IQueryable<JsonResult<T>> FromOpenJson<T>(this string json, string path = null)
-        {
-            return new[]
-            {
-                new JsonResult<T> { Value = (T)((object)"kind2") }
-            }
-            .AsQueryable()
-            ;
-        }
-
-        public static IEnumerable<JsonResult<T>> ValueFromOpenJson<T>(this IQueryable<JsonResult<T>> self, string json, string path = null)
+        private static JToken Extract(string json, string path = null)
         {
             var lax = true;
             JToken token = null;
@@ -126,6 +116,7 @@ namespace Microsoft.EntityFrameworkCore
                     var first = parts[0];
                     if (first.Length > 1)
                     {
+                        // $[0]
                         if (first.StartsWith("[") && first.EndsWith("]"))
                         {
                             if (!int.TryParse(first.Substring(1, first.Length - 2), out var ix))
@@ -139,10 +130,9 @@ namespace Microsoft.EntityFrameworkCore
                     token = parts.Skip(1).Aggregate(root, (current, next) =>
                     {
                         if (current == null)
-                        {
-                            if (lax) return null;
-                            throw new ArgumentException(nameof(path));
-                        }
+                            return lax ? (JToken)null : throw new ArgumentException(nameof(path));
+
+                        var before = current;
 
                         var ix = -1;
                         if (next.EndsWith("]"))
@@ -151,33 +141,45 @@ namespace Microsoft.EntityFrameworkCore
                             if (six <= 0) throw new ArgumentException(nameof(path));
                             if (!int.TryParse(next.Substring(six + 1, next.Length - six - 2), out ix) || ix < 0)
                                 throw new ArgumentException(nameof(path));
+                            next = next.Substring(0, six);
+                        }
+                        if (next.StartsWith("\""))
+                        {
+                            var six = next.IndexOf("\"", 1);
+                            if (six <= 0) throw new ArgumentException(nameof(path));
+                            next = next.Substring(1, six);
                         }
                         if (current is IDictionary<string, JToken> jobj)
                         {
-                            if (!jobj.TryGetValue(next, out var prop))
+                            //if (ix >= 0)
+                            //    return lax ? (JToken)null : throw new ArgumentException(nameof(path));
+
+                            if (jobj.TryGetValue(next, out var prop))
                                 current = prop;
-                            else
-                            {
-                                if (lax) return null;
-                                throw new ArgumentException(nameof(path));
-                            }
+                            else return lax ? (JToken)null : throw new ArgumentException(nameof(path));
                         }
                         if (ix >= 0)
                         {
                             if (current is JArray jarr && jarr.Count > ix)
                                 current = jarr[ix];
-                            else
-                            {
-                                if (lax) return null;
-                                throw new ArgumentException(nameof(path));
-                            }
+                            else return lax ? (JToken)null : throw new ArgumentException(nameof(path));
                         }
 
                         //if (current is JArray ja)
-                        return current;
+                        return current == before 
+                            ? lax ? (JToken)null : throw new ArgumentException(nameof(path))
+                            : current;
                     });
                 }
             }
+            return token;
+        }
+
+        public static IEnumerable<JsonResult<T>> ValueFromOpenJson<T>(this IQueryable<JsonResult<T>> self, string json, string path = null)
+        {
+            var token = Extract(json, path);
+            if (token == null)
+                return null;
 
             if (token.Type == JTokenType.Array)
             {
@@ -204,6 +206,54 @@ namespace Microsoft.EntityFrameworkCore
                         Value = prop.Value.Convert<T>(jtype)
                     };
                 }).AsQueryable();
+            }
+            else if (token.Type == JTokenType.Null)
+            {
+                return new[]
+                {
+                    new JsonResult<T>
+                    {
+                        Key = null,
+                        Type = JsonType.Null,
+                        Value = default(T)
+                    }
+                };
+            }
+            else if (token.Type == JTokenType.String)
+            {
+                return new[]
+                {
+                    new JsonResult<T>
+                    {
+                        Key = null,
+                        Type = JsonType.String,
+                        Value = token.Value<T>()
+                    }
+                };
+            }
+            else if (token.Type == JTokenType.Boolean)
+            {
+                return new[]
+                {
+                    new JsonResult<T>
+                    {
+                        Key = null,
+                        Type = JsonType.Boolean,
+                        Value = token.Value<T>()
+                    }
+                };
+            }
+            else if (token.Type == JTokenType.Integer || token.Type == JTokenType.Float)
+            {
+                return new[]
+                {
+                    new JsonResult<T>
+                    {
+                        Key = null,
+                        Type = JsonType.Number,
+                        Value = token.Value<T>()
+                    }
+                };
             }
             else throw new ArgumentException("invalid json", nameof(json));
         }

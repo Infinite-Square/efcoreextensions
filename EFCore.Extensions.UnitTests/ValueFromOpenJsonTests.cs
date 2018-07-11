@@ -56,17 +56,37 @@ namespace EFCore.Extensions.UnitTests
         [Fact]
         public void ParseArrayOfEntities()
         {
-            var result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entitiesJson, "$.P3").ToList();
-            Assert.Equal(3, result.Count());
-            Assert.Equal(_entities[0].P3, result[0].Value);
-            Assert.Equal(_entities[1].P3, result[1].Value);
-            Assert.Equal(_entities[2].P3, result[2].Value);
+            var result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entitiesJson, "$.P3");
+            Assert.Null(result);
+            //Assert.Equal(3, result.Count());
+            //Assert.Equal(_entities[0].P3, result[0].Value);
+            //Assert.Equal(_entities[1].P3, result[1].Value);
+            //Assert.Equal(_entities[2].P3, result[2].Value);
         }
 
         [Fact]
         public void ParseArrayOfStrings()
         {
+            var result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entityJson, "$.P9").ToList();
+            Assert.Equal(_entity.P9.Length, result.Count);
+            for (var i = 0; i < result.Count; i++)
+                Assert.Equal(_entity.P9[i], result[i].Value);
+        }
 
+        [Fact]
+        public void ParseEntity()
+        {
+            var result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entityJson, "$.Children[0].P3").ToList();
+            Assert.Single(result);
+            var r = result[0];
+            Assert.Equal(JsonType.String, r.Type);
+            Assert.Equal(_entity.Children[0].P3, r.Value);
+
+            result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entityJson, "$.Children[0].P6").ToList();
+            Assert.Single(result);
+            r = result[0];
+            Assert.Equal(JsonType.Null, r.Type);
+            Assert.Null(r.Value);
         }
     }
 }

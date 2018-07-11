@@ -43,13 +43,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApplicationContext.cs" />
-    <Compile Include="Migrations\20180619101040_Init.cs" />
-    <Compile Include="Migrations\20180619101040_Init.designer.cs">
-      <DependentUpon>20180619101040_Init.cs</DependentUpon>
+    <Compile Include="Migrations\20180628160601_Init.cs" />
+    <Compile Include="Migrations\20180628160601_Init.designer.cs">
+      <DependentUpon>20180628160601_Init.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\20180628160636_AddValues.cs" />
+    <Compile Include="Migrations\20180628160636_AddValues.designer.cs">
+      <DependentUpon>20180628160636_AddValues.cs</DependentUpon>
     </Compile>
     <Compile Include="Migrations\ApplicationContextModelSnapshot.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SimpleConsoleLoggerProvider.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -79,5 +84,6 @@
       <Version>2.1.1</Version>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

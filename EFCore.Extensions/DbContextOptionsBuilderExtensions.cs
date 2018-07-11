@@ -22,17 +22,19 @@ namespace Microsoft.EntityFrameworkCore
             optionsBuilder.ReplaceService<IModelCustomizer, ExtensionsRelationalModelCustomizer>();
         }
 
-        public static void UseExtensions(this DbContextOptionsBuilder optionsBuilder, Action<ExtensionsDbContextOptionsBuilder> configure)
+        public static DbContextOptionsBuilder UseExtensions(this DbContextOptionsBuilder optionsBuilder, Action<ExtensionsDbContextOptionsBuilder> configure)
         {
-            (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder(optionsBuilder));
             optionsBuilder.UseExtensions();
+            (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder(optionsBuilder));
+            return optionsBuilder;
         }
 
-        public static void UseExtensions<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder, Action<ExtensionsDbContextOptionsBuilder<TContext>> configure)
+        public static DbContextOptionsBuilder<TContext> UseExtensions<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder, Action<ExtensionsDbContextOptionsBuilder<TContext>> configure)
             where TContext : DbContext
         {
-            (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder<TContext>(optionsBuilder));
             optionsBuilder.UseExtensions();
+            (configure ?? throw new ArgumentNullException(nameof(configure)))(new ExtensionsDbContextOptionsBuilder<TContext>(optionsBuilder));
+            return optionsBuilder;
         }
     }
 

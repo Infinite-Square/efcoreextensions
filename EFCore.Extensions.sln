@@ -3,13 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.Extensions", "EFCore.Extensions\EFCore.Extensions.csproj", "{43FE2BF6-2B5D-45D7-9FBD-7ACFC29E4829}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions", "EFCore.Extensions\EFCore.Extensions.csproj", "{43FE2BF6-2B5D-45D7-9FBD-7ACFC29E4829}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.Extensions.SqlServer", "EFCore.Extensions.SqlServer\EFCore.Extensions.SqlServer.csproj", "{B8EEC3EC-96FA-4E6F-8680-C8C2F9B7034B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.SqlServer", "EFCore.Extensions.SqlServer\EFCore.Extensions.SqlServer.csproj", "{B8EEC3EC-96FA-4E6F-8680-C8C2F9B7034B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{B01809E1-9E29-4AA5-9969-1D6C9C64DD41}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.Extensions.InMemory", "EFCore.Extensions.InMemory\EFCore.Extensions.InMemory.csproj", "{12E32E43-7231-40DC-9765-CAE67B67FFDC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.InMemory", "EFCore.Extensions.InMemory\EFCore.Extensions.InMemory.csproj", "{12E32E43-7231-40DC-9765-CAE67B67FFDC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.UnitTests", "EFCore.Extensions.UnitTests\EFCore.Extensions.UnitTests.csproj", "{931FF9E5-0FE9-43FA-9DF0-538758F1D0BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{12E32E43-7231-40DC-9765-CAE67B67FFDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12E32E43-7231-40DC-9765-CAE67B67FFDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{12E32E43-7231-40DC-9765-CAE67B67FFDC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{931FF9E5-0FE9-43FA-9DF0-538758F1D0BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{931FF9E5-0FE9-43FA-9DF0-538758F1D0BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{931FF9E5-0FE9-43FA-9DF0-538758F1D0BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{931FF9E5-0FE9-43FA-9DF0-538758F1D0BE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

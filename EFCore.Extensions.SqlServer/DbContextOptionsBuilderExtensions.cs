@@ -1,7 +1,9 @@
 ﻿using EFCore.Extensions.SqlServer.Query.ExpressionVisitors;
 using EFCore.Extensions.SqlServer.Query.Sql.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using System;
 using System.Data.Common;
@@ -13,9 +15,11 @@ namespace Microsoft.EntityFrameworkCore
         private static DbContextOptionsBuilder UseSqlServerServices(this DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.ReplaceService<IQuerySqlGeneratorFactory, ExtensionsQuerySqlGeneratorFactory>();
-            //optionsBuilder.ReplaceService<IResultOperatorHandler, ResultOperatorHandler>();
-            //optionsBuilder.ReplaceService<IQueryAnnotationExtractor, QueryAnnotationExtractor>();
             optionsBuilder.ReplaceService<IEntityQueryableExpressionVisitorFactory, ExtensionsRelationalEntityQueryableExpressionVisitorFactory>();
+
+            optionsBuilder.ReplaceService<IResultOperatorHandler, ResultOperatorHandler>();
+            optionsBuilder.ReplaceService<IQueryAnnotationExtractor, QueryAnnotationExtractor>();
+
             return optionsBuilder;
         }
 

@@ -61,6 +61,7 @@ namespace EFCore.Extensions.Query
                         if (QuerySourceMappingLookup.GetValue(mapping) is IDictionary<IQuerySource, Expression> lookup)
                         {
                             var source = lookup.Keys.FirstOrDefault(s => s.ItemType == pe.Type && s.ItemName == pe.Name);
+                            source = source ?? lookup.Keys.SingleOrDefault(s => s.ItemType == pe.Type);
                             if (source != null)
                             {
 
