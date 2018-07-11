@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -27,9 +28,10 @@ namespace ConsoleApp1
             serviceCollection
                 .AddDbContext<ApplicationContext>(builder =>
               {
-                  var lf = new LoggerFactory();
-                  lf.AddProvider(new SimpleConsoleLoggerProvider());
-                  builder.UseLoggerFactory(lf);
+                  builder.UseLoggerFactory(new LoggerFactory(new[]
+                  {
+                      new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
+                  }));
                   builder.UseExtensions(extensions =>
                   {
                       extensions.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
