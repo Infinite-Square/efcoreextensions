@@ -47,11 +47,11 @@ namespace EFCore.Extensions.UnitTests
 
     public class ValueFromOpenJsonTests
     {
-        private static Entity _entity = Entity.Create(3);
-        private static string _entityJson = JsonConvert.SerializeObject(_entity);
+        private static readonly Entity _entity = Entity.Create(3);
+        private static readonly string _entityJson = JsonConvert.SerializeObject(_entity);
 
-        private static Entity[] _entities = new[] { Entity.Create(3), Entity.Create(3), Entity.Create(3) };
-        private static string _entitiesJson = JsonConvert.SerializeObject(_entities);
+        private static readonly Entity[] _entities = new[] { Entity.Create(3), Entity.Create(3), Entity.Create(3) };
+        private static readonly string _entitiesJson = JsonConvert.SerializeObject(_entities);
 
         [Fact]
         public void ParseArrayOfEntities()
