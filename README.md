@@ -1,6 +1,8 @@
 # efcoreextensions
 support for OPENJSON sql server syntax with linq to entities through EFCore
 
+[![Build status](https://ci.appveyor.com/api/projects/status/9fk7web9l52u2778?svg=true)](https://ci.appveyor.com/project/jgiacomini/efcoreextensions)
+
 # Context
 - Your project use EF Core (2.1.1).
 - You need some JSON features of SQL Server (```JSON_VALUE```, ```JSON_QUERY```, ```OPENJSON```).
