@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using System.IO;
 
 namespace EFCore.Extensions.SqlServer.UnitTests
 {
@@ -11,10 +9,10 @@ namespace EFCore.Extensions.SqlServer.UnitTests
 
         public static AppSettings Load()
         {
-            return new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .Build()
-                .Get<AppSettings>();
+            var appSettings = new AppSettings();
+            string directoryPath = Path.GetTempPath();
+            appSettings.ConnectionString =  $"Data Source=(localdb)\\MSSQLLocalDB;AttachDBFilename={directoryPath}efcoreextensions.mdf;Initial Catalog=efcoreextensions;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False";
+            return appSettings;
         }
     }
 }
