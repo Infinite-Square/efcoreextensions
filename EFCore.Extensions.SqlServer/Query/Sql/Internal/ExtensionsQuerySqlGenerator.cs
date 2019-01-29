@@ -1,17 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using EFCore.Extensions.SqlServer.Query.Expressions;
+﻿using EFCore.Extensions.SqlServer.Query.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Sql.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
-using Remotion.Linq.Clauses.Expressions;
+using System;
+using System.Collections.Generic;
+using System.Data.Common;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
 {
@@ -58,26 +57,6 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             , bool rowNumberPagingEnabled)
             : base(dependencies, selectExpression, rowNumberPagingEnabled)
         {
-        }
-
-        protected override Expression VisitQuerySourceReference(QuerySourceReferenceExpression expression)
-        {
-            return base.VisitQuerySourceReference(expression);
-        }
-
-        public override Expression VisitSelect(SelectExpression selectExpression)
-        {
-            return base.VisitSelect(selectExpression);
-        }
-
-        protected override Expression VisitSubQuery(SubQueryExpression expression)
-        {
-            return base.VisitSubQuery(expression);
-        }
-
-        public override Expression VisitTable(TableExpression tableExpression)
-        {
-            return base.VisitTable(tableExpression);
         }
 
         public virtual Expression VisitValueFromOpenJson(ValueFromOpenJsonExpression expression)
@@ -142,7 +121,7 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                         }
                         else
                         {
-                            foreach(var t in select.Tables)
+                            foreach (var t in select.Tables)
                             {
                                 if (t is JoinExpressionBase join && join.TableExpression is SelectExpression joinSelect)
                                 {
@@ -162,6 +141,7 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
 
                             if (table == null) throw new NotImplementedException();
                         }
+
                         var column = new ColumnExpression(columnName, prop, table);
 
                         var fsql = "SELECT [Key], [Value], [Type] FROM OPENJSON(";
@@ -266,7 +246,7 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                             {
                                 var parameter = (ParameterExpression)expression;
 
-                                if (this.ParameterValues.ContainsKey(parameter.Name))
+                                if (ParameterValues.ContainsKey(parameter.Name))
                                 {
                                     substitutions[i] = SqlGenerator.GenerateParameterName(parameter.Name);
 
@@ -336,7 +316,6 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                        || _typeMapping.ClrType.IsInstanceOfType(value))
                 ? _typeMapping
                 : Dependencies.TypeMappingSource.GetMappingForValue(value);
-                //: Dependencies.RelationalTypeMapper.GetMappingForValue(value);
         }
     }
 }
