@@ -29,10 +29,10 @@ namespace ConsoleApp1
             serviceCollection
                 .AddDbContext<ApplicationContext>(builder =>
                 {
-                    builder.UseLoggerFactory(new LoggerFactory(new[]
-                    {
-                      new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
-                  }));
+                    //builder.UseLoggerFactory(new LoggerFactory(new[]
+                    //{
+                    //    new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
+                    //}));
                     builder.UseExtensions(extensions =>
                     {
                         extensions.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");

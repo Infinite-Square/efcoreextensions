@@ -13,5 +13,7 @@ namespace EFCore.Extensions.SqlServer.UnitTests.Data
         /// JSON array of strings ["k1", "k2"]
         /// </summary>
         public string Kinds { get; set; }
+
+        public ICollection<GroupPerson> Groups { get; set; }
     }
 }

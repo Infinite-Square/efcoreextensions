@@ -7,10 +7,19 @@ namespace EFCore.Extensions.SqlServer.UnitTests.Data
     public class DataContext : DbContext
     {
         public DbSet<Person> Persons { get; set; }
+        public DbSet<Group> Groups { get; set; }
+        public DbSet<GroupPerson> GroupPersons { get; set; }
 
         public DataContext(DbContextOptions<DataContext> options)
             : base(options)
         {
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<GroupPerson>().HasOne(gp => gp.Person).WithMany(p => p.Groups).HasForeignKey(gp => gp.PersonId);
+            modelBuilder.Entity<GroupPerson>().HasOne(gp => gp.Group).WithMany(p => p.Persons).HasForeignKey(gp => gp.GroupId);
+            base.OnModelCreating(modelBuilder);
         }
     }
 

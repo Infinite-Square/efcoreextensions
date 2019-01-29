@@ -1,25 +1,33 @@
 ﻿using EFCore.Extensions.SqlServer.UnitTests.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Debug;
 using System;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace EFCore.Extensions.SqlServer.UnitTests
 {
-    public class GlobalFixture : IAsyncLifetime, IDisposable
+    public class GlobalTrueDatabaseFixture : IAsyncLifetime, IDisposable
     {
         private readonly ServiceProvider _services;
 
         public IServiceProvider Services => _services;
 
-        public GlobalFixture()
+        public GlobalTrueDatabaseFixture()
         {
             var appSettings = AppSettings.Load();
             var services = new ServiceCollection()
                 .AddDbContext<DataContext>(options =>
-                    options.UseExtensions(extensions =>
-                        extensions.UseSqlServer(appSettings.ConnectionString))
+                    options.UseLoggerFactory(new LoggerFactory(new[]
+                    {
+                        new DebugLoggerProvider()
+                    })).UseExtensions(extensions =>
+                    {
+                        extensions.UseSqlServer(appSettings.ConnectionString);
+                        //extensions.EnableSqlServerCommandCatcher();
+                    })
                     , ServiceLifetime.Transient
                     , ServiceLifetime.Singleton);
             _services = services.BuildServiceProvider(false);
@@ -31,6 +39,7 @@ namespace EFCore.Extensions.SqlServer.UnitTests
             {
                 await ctx.Database.EnsureDeletedAsync();
                 await ctx.Database.MigrateAsync();
+
                 //await ctx.Database.EnsureCreatedAsync();
             }
         }
@@ -46,8 +55,49 @@ namespace EFCore.Extensions.SqlServer.UnitTests
         }
     }
 
-    [CollectionDefinition("global")]
-    public class GlobalCollection : ICollectionFixture<GlobalFixture>
+    public class GlobalFakeDatabaseFixture : IAsyncLifetime, IDisposable
+    {
+        private readonly ServiceProvider _services;
+
+        public IServiceProvider Services => _services;
+
+        public GlobalFakeDatabaseFixture()
+        {
+            var services = new ServiceCollection()
+                .AddDbContext<DataContext>(options =>
+                    options.UseExtensions(extensions =>
+                    {
+                        extensions.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=fakedb;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
+                        extensions.EnableSqlServerCommandCatcher();
+                    })
+                    , ServiceLifetime.Transient
+                    , ServiceLifetime.Singleton);
+            _services = services.BuildServiceProvider(false);
+        }
+
+        public Task InitializeAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _services.Dispose();
+        }
+
+        public Task DisposeAsync()
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    [CollectionDefinition("globaltruedatabase")]
+    public class GlobalTrueDatabaseCollection : ICollectionFixture<GlobalTrueDatabaseFixture>
+    {
+    }
+
+    [CollectionDefinition("globalfakedatabase")]
+    public class GlobalFakeDatabaseCollection : ICollectionFixture<GlobalFakeDatabaseFixture>
     {
     }
 }

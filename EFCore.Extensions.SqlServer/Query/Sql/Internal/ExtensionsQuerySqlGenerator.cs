@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Sql.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Remotion.Linq.Clauses.Expressions;
 
 namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
 {
@@ -57,6 +58,26 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             , bool rowNumberPagingEnabled)
             : base(dependencies, selectExpression, rowNumberPagingEnabled)
         {
+        }
+
+        protected override Expression VisitQuerySourceReference(QuerySourceReferenceExpression expression)
+        {
+            return base.VisitQuerySourceReference(expression);
+        }
+
+        public override Expression VisitSelect(SelectExpression selectExpression)
+        {
+            return base.VisitSelect(selectExpression);
+        }
+
+        protected override Expression VisitSubQuery(SubQueryExpression expression)
+        {
+            return base.VisitSubQuery(expression);
+        }
+
+        public override Expression VisitTable(TableExpression tableExpression)
+        {
+            return base.VisitTable(tableExpression);
         }
 
         public virtual Expression VisitValueFromOpenJson(ValueFromOpenJsonExpression expression)
@@ -108,11 +129,43 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                     if (valueFromOpenJsonExpression.PropertyMapping.TryGetValue(json, out var prop))
                     {
                         var columnName = prop.Relational().ColumnName;
-                        var table = SelectExpression.Tables.First();
+                        var querySource = valueFromOpenJsonExpression.QuerySource;
+                        var select = SelectExpression;
+                        var table = select.GetTableForQuerySource(querySource);
+                        if (table != null)
+                        {
+                            while (table is SelectExpression selectTable)
+                            {
+                                var tmp = selectTable.GetTableForQuerySource(querySource);
+                                if (tmp != null) table = tmp;
+                            }
+                        }
+                        else
+                        {
+                            foreach(var t in select.Tables)
+                            {
+                                if (t is JoinExpressionBase join && join.TableExpression is SelectExpression joinSelect)
+                                {
+                                    table = joinSelect.GetTableForQuerySource(querySource);
+                                    if (table != null)
+                                    {
+                                        while (table is SelectExpression selectTable)
+                                        {
+                                            var tmp = selectTable.GetTableForQuerySource(querySource);
+                                            if (tmp != null) table = tmp;
+                                        }
+                                        if (prop.DeclaringEntityType.ClrType == table.QuerySource.ItemType)
+                                            break;
+                                    }
+                                }
+                            }
+
+                            if (table == null) throw new NotImplementedException();
+                        }
                         var column = new ColumnExpression(columnName, prop, table);
 
                         var fsql = "SELECT [Key], [Value], [Type] FROM OPENJSON(";
-                        Sql.AppendLines(fsql);
+                        Sql.Append(fsql);
                         VisitColumn(column);
                         Sql.Append($",{pathValue ?? "N'$'"})");
                         return;
@@ -282,7 +335,8 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                    && (value == null
                        || _typeMapping.ClrType.IsInstanceOfType(value))
                 ? _typeMapping
-                : Dependencies.RelationalTypeMapper.GetMappingForValue(value);
+                : Dependencies.TypeMappingSource.GetMappingForValue(value);
+                //: Dependencies.RelationalTypeMapper.GetMappingForValue(value);
         }
     }
 }
