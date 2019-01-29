@@ -178,8 +178,9 @@ namespace Microsoft.EntityFrameworkCore
         public static IEnumerable<JsonResult<T>> ValueFromOpenJson<T>(this IQueryable<JsonResult<T>> self, string json, string path = null)
         {
             var token = Extract(json, path);
-            if (token == null)
-                return null;
+            if (token == null) // we are in lax mode so we return an empty collection
+                return Enumerable.Empty<JsonResult<T>>();
+                //return null;
 
             if (token.Type == JTokenType.Array)
             {
