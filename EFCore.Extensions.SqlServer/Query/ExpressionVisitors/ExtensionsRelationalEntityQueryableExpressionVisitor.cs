@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.Storage;
+using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using System;
 using System.Collections.Generic;
@@ -79,7 +80,16 @@ namespace EFCore.Extensions.SqlServer.Query.ExpressionVisitors
                             valueFromOpenJsonAnnotation.Json,
                             valueFromOpenJsonAnnotation.Path,
                             tableAlias);
-                    expr.PropertyMapping[valueFromOpenJsonAnnotation.Json] = memberProperty;
+                    expr.PropertyMapping[expr.Json] = memberProperty;
+
+                    //var jsonProperties = MemberAccessBindingExpressionVisitor.GetPropertyPath(expr.Json, relationalQueryCompilationContext, out var qsr);
+                    //Console.WriteLine(jsonProperties);
+
+                    //expr = (ValueFromOpenJsonExpression)Visit(expr);
+                    //expr.PropertyMapping[expr.Json] = memberProperty;
+
+                    //expr = (ValueFromOpenJsonExpression)QueryModelVisitor.ReplaceClauseReferences(expr);
+                    //expr.PropertyMapping[expr.Json] = memberProperty;
 
                     selectExpression.AddTable(expr);
 
@@ -206,5 +216,6 @@ namespace EFCore.Extensions.SqlServer.Query.ExpressionVisitors
 
             return shaper;
         }
+
     }
 }

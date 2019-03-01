@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Sql.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Remotion.Linq.Clauses;
+using Remotion.Linq.Clauses.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -52,12 +54,42 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             set => _parameterNameGeneratorInfo.SetValue(this, value);
         }
 
+        //private readonly List<SelectExpression> _selectExpressions = new List<SelectExpression>();
+        //private readonly List<TableExpression> _tableExpressions = new List<TableExpression>();
+
         public ExtensionsQuerySqlGenerator(QuerySqlGeneratorDependencies dependencies
             , SelectExpression selectExpression
             , bool rowNumberPagingEnabled)
             : base(dependencies, selectExpression, rowNumberPagingEnabled)
         {
         }
+
+        //public override Expression VisitSelect(SelectExpression selectExpression)
+        //{
+        //    _selectExpressions.Add(selectExpression);
+        //    return base.VisitSelect(selectExpression);
+        //}
+
+        //public override Expression VisitAlias(AliasExpression aliasExpression)
+        //{
+        //    return base.VisitAlias(aliasExpression);
+        //}
+
+        //protected override Expression VisitParameter(ParameterExpression parameterExpression)
+        //{
+        //    return base.VisitParameter(parameterExpression);
+        //}
+
+        //public override Expression VisitTable(TableExpression tableExpression)
+        //{
+        //    _tableExpressions.Add(tableExpression);
+        //    return base.VisitTable(tableExpression);
+        //}
+
+        //protected override Expression VisitSubQuery(SubQueryExpression expression)
+        //{
+        //    return base.VisitSubQuery(expression);
+        //}
 
         public virtual Expression VisitValueFromOpenJson(ValueFromOpenJsonExpression expression)
         {
@@ -111,6 +143,8 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                         var querySource = valueFromOpenJsonExpression.QuerySource;
                         var select = SelectExpression;
                         var table = select.GetTableForQuerySource(querySource);
+
+                        ColumnExpression column = null;
                         if (table != null)
                         {
                             while (table is SelectExpression selectTable)
@@ -118,31 +152,100 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                                 var tmp = selectTable.GetTableForQuerySource(querySource);
                                 if (tmp != null) table = tmp;
                             }
+                            if (prop.DeclaringEntityType.ClrType != table.QuerySource.ItemType)
+                            {
+                                // we have to explore in predicate subquery
+                                if (select.Predicate is BinaryExpression bpe)
+                                {
+                                    var left = bpe.Left;
+                                    var right = bpe.Right;
+
+                                    if (right is ExistsExpression rexists)
+                                    {
+                                        var subQuery = rexists.Subquery;
+                                        var subTable = subQuery.GetTableForQuerySource(querySource);
+                                        if (subTable != null && prop.DeclaringEntityType.ClrType == subTable.QuerySource.ItemType)
+                                            table = subTable;
+                                    }
+
+                                }
+                            }
                         }
                         else
                         {
-                            foreach (var t in select.Tables)
+                            //foreach (var t in _tableExpressions.Reverse<TableExpression>())
+                            //{
+                            //    if (t.QuerySource.ItemType == prop.DeclaringEntityType.ClrType)
+                            //    {
+                            //        table = t;
+
+                            //        foreach (var s in _selectExpressions.Reverse<SelectExpression>())
+                            //        {
+                            //            if (s == select) continue;
+                            //            if (s.Tables.Contains(valueFromOpenJsonExpression)) continue;
+                            //            if (s.Tables.Contains(t))
+                            //            {
+                            //                if (s.QuerySource is JoinClause joinClause)
+                            //                {
+
+                            //                }
+                            //                if (!string.IsNullOrWhiteSpace(s.Alias))
+                            //                {
+                            //                    column = new ColumnExpression(columnName, prop, s);
+                            //                    break;
+                            //                }
+                            //            }
+                            //        }
+
+                            //        break;
+                            //    }
+                            //}
+
+
+                            if (table == null)
                             {
-                                if (t is JoinExpressionBase join && join.TableExpression is SelectExpression joinSelect)
+                                foreach (var t in select.Tables/*.Reverse()*/)
                                 {
-                                    table = joinSelect.GetTableForQuerySource(querySource);
-                                    if (table != null)
+                                    if (t is JoinExpressionBase join && join.TableExpression is SelectExpression joinSelect)
                                     {
-                                        while (table is SelectExpression selectTable)
+                                        table = joinSelect.GetTableForQuerySource(querySource);
+                                        if (table != null)
                                         {
-                                            var tmp = selectTable.GetTableForQuerySource(querySource);
-                                            if (tmp != null) table = tmp;
+                                            while (table is SelectExpression selectTable)
+                                            {
+                                                var tmp = selectTable.GetTableForQuerySource(querySource);
+                                                if (tmp != null) table = tmp;
+                                            }
+                                            if (prop.DeclaringEntityType.ClrType == table.QuerySource.ItemType)
+                                                break;
                                         }
-                                        if (prop.DeclaringEntityType.ClrType == table.QuerySource.ItemType)
-                                            break;
+                                    }
+                                    else
+                                    {
+                                        try
+                                        {
+                                            if (t.QuerySource.ItemType != prop.DeclaringEntityType.ClrType) continue;
+                                            var bind = select.BindProperty(prop, t.QuerySource);
+                                            if (bind == null) continue;
+                                            if (bind is ColumnExpression c)
+                                            {
+                                                column = c;
+                                                break;
+                                            }
+                                            else throw new NotImplementedException();
+                                        }
+                                        catch
+                                        {
+                                            continue;
+                                        }
                                     }
                                 }
                             }
 
-                            if (table == null) throw new NotImplementedException();
+                            if (table == null && column == null) throw new NotImplementedException();
                         }
 
-                        var column = new ColumnExpression(columnName, prop, table);
+                        column = column ?? new ColumnExpression(columnName, prop, table);
 
                         var fsql = "SELECT [Key], [Value], [Type] FROM OPENJSON(";
                         Sql.Append(fsql);
