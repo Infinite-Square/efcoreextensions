@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Newtonsoft.Json;
 using System;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -52,6 +53,23 @@ namespace ConsoleApp1
                 using (var c1 = scope1.ServiceProvider.GetRequiredService<ApplicationContext>())
                 using (var c2 = scope1.ServiceProvider.GetRequiredService<ApplicationContext>())
                 {
+                    await c1.Persons.BulkInsertAsync(new[]
+                    {
+                        new Person
+                        {
+                            Name = "toto1"
+                        },
+                        new Person
+                        {
+                            Name = "toto2"
+                        },
+                        new Person
+                        {
+                            Name = "toto3"
+                        }
+                    });
+
+
                     var p1 = (IInfrastructure<IServiceProvider>)c1;
                     var catcher1 = p1.GetService<ISqlCommandCatcher>();
                     using (var scope = catcher1.EnableCatching())
@@ -62,6 +80,23 @@ namespace ConsoleApp1
                         var count2 = await c2.Persons.CountAsync();
                         if (count2 == 0) throw new Exception();
                         if (scope.Commands.Count() != 1) throw new Exception();
+
+                        IQueryable<JsonResult<string>> json = c1.Set<JsonResult<string>>();
+                        var pp = await c1.Persons
+                            .Where(p => json.ValueFromOpenJson(p.KindsList, "$").Select(jr => jr.Value).Contains("kind2"))
+                            .ToListAsync();
+                        if (scope.Commands.Count() != 2) throw new Exception();
+
+                        c1.Persons.Add(new Person
+                        {
+                            Name = "toto"
+                        });
+                        await c1.SaveChangesAsync();
+
+                        
+                        
+
+                        if (scope.Commands.Count() != 3) throw new Exception();
                     }
                 }
             }

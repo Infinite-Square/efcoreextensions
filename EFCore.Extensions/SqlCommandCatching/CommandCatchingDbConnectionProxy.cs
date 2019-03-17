@@ -12,7 +12,7 @@ namespace EFCore.Extensions.SqlCommandCatching
 
 
         private DbConnection _effectiveConnection;
-        protected override DbConnection UnderlyingConnection => _catchingState.Enabled
+        public override DbConnection UnderlyingConnection => _catchingState.Enabled
             ? null
             : (_effectiveConnection ?? (_effectiveConnection = _factory()));
 

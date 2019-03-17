@@ -31,7 +31,7 @@ namespace EFCore.Extensions.SqlConnectionUtilities
             _state = state;
         }
 
-        protected abstract DbConnection UnderlyingConnection { get; }
+        public abstract DbConnection UnderlyingConnection { get; }
         protected abstract ICommandExecutor CommandExecutor { get; }
 
         public override string ConnectionString { get; set; }
