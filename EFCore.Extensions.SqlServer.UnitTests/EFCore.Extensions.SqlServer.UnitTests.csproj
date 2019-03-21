@@ -27,10 +27,4 @@
     <ProjectReference Include="..\EFCore.Extensions\EFCore.Extensions.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
