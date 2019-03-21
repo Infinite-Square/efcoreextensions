@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace EFCore.Extensions.SqlServer.UnitTests
@@ -11,10 +12,15 @@ namespace EFCore.Extensions.SqlServer.UnitTests
 
         public static AppSettings Load()
         {
-            return new ConfigurationBuilder()
+            var settings = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
                 .Build()
                 .Get<AppSettings>();
+
+            var tmp = Path.GetTempPath();
+            settings.ConnectionString = settings.ConnectionString.Replace("{tmp}", tmp);
+
+            return settings;
         }
     }
 }
