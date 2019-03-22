@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
@@ -20,6 +21,10 @@ namespace EFCore.Extensions.SqlServer.UnitTests.Data
             modelBuilder.Entity<GroupPerson>().HasOne(gp => gp.Person).WithMany(p => p.Groups).HasForeignKey(gp => gp.PersonId);
             modelBuilder.Entity<GroupPerson>().HasOne(gp => gp.Group).WithMany(p => p.Persons).HasForeignKey(gp => gp.GroupId);
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Person>().HasQueryFilter(p => p.TenantId == Guid.Empty);
+            modelBuilder.Entity<GroupPerson>().HasQueryFilter(p => p.TenantId == Guid.Empty);
+            modelBuilder.Entity<Group>().HasQueryFilter(p => p.TenantId == Guid.Empty);
         }
     }
 

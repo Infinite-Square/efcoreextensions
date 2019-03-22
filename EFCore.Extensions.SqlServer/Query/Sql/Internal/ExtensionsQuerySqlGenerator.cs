@@ -25,14 +25,14 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             type = type.UnwrapNullableType();
 
             return type == typeof(int)
-                   || type == typeof(long)
-                   || type == typeof(short)
-                   || type == typeof(byte)
-                   || type == typeof(uint)
-                   || type == typeof(ulong)
-                   || type == typeof(ushort)
-                   || type == typeof(sbyte)
-                   || type == typeof(char);
+                || type == typeof(long)
+                || type == typeof(short)
+                || type == typeof(byte)
+                || type == typeof(uint)
+                || type == typeof(ulong)
+                || type == typeof(ushort)
+                || type == typeof(sbyte)
+                || type == typeof(char);
         }
     }
 
@@ -54,8 +54,13 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             set => _parameterNameGeneratorInfo.SetValue(this, value);
         }
 
-        //private readonly List<SelectExpression> _selectExpressions = new List<SelectExpression>();
-        //private readonly List<TableExpression> _tableExpressions = new List<TableExpression>();
+        private readonly List<SelectExpression> _selectExpressions = new List<SelectExpression>();
+        //private readonly List<AliasExpression> _aliasExpressions = new List<AliasExpression>();
+        //private readonly List<ParameterExpression> _parameterExpressions = new List<ParameterExpression>();
+        private readonly List<TableExpression> _tableExpressions = new List<TableExpression>();
+        //private readonly List<SubQueryExpression> _subQueryExpressions = new List<SubQueryExpression>();
+        //private readonly List<QuerySourceReferenceExpression> _querySourceReferenceExpressions = new List<QuerySourceReferenceExpression>();
+        //private readonly List<Expression> _expressions = new List<Expression>();
 
         public ExtensionsQuerySqlGenerator(QuerySqlGeneratorDependencies dependencies
             , SelectExpression selectExpression
@@ -64,35 +69,51 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
         {
         }
 
-        //public override Expression VisitSelect(SelectExpression selectExpression)
-        //{
-        //    _selectExpressions.Add(selectExpression);
-        //    return base.VisitSelect(selectExpression);
-        //}
+        public override Expression VisitSelect(SelectExpression selectExpression)
+        {
+            //_expressions.Add(selectExpression);
+            _selectExpressions.Add(selectExpression);
+            return base.VisitSelect(selectExpression);
+        }
 
         //public override Expression VisitAlias(AliasExpression aliasExpression)
         //{
+        //    _expressions.Add(aliasExpression);
+        //    _aliasExpressions.Add(aliasExpression);
         //    return base.VisitAlias(aliasExpression);
         //}
 
         //protected override Expression VisitParameter(ParameterExpression parameterExpression)
         //{
+        //    _expressions.Add(parameterExpression);
+        //    _parameterExpressions.Add(parameterExpression);
         //    return base.VisitParameter(parameterExpression);
         //}
 
-        //public override Expression VisitTable(TableExpression tableExpression)
-        //{
-        //    _tableExpressions.Add(tableExpression);
-        //    return base.VisitTable(tableExpression);
-        //}
+        public override Expression VisitTable(TableExpression tableExpression)
+        {
+            //_expressions.Add(tableExpression);
+            _tableExpressions.Add(tableExpression);
+            return base.VisitTable(tableExpression);
+        }
 
         //protected override Expression VisitSubQuery(SubQueryExpression expression)
         //{
+        //    _expressions.Add(expression);
+        //    _subQueryExpressions.Add(expression);
         //    return base.VisitSubQuery(expression);
+        //}
+
+        //protected override Expression VisitQuerySourceReference(QuerySourceReferenceExpression expression)
+        //{
+        //    _querySourceReferenceExpressions.Add(expression);
+        //    _expressions.Add(expression);
+        //    return base.VisitQuerySourceReference(expression);
         //}
 
         public virtual Expression VisitValueFromOpenJson(ValueFromOpenJsonExpression expression)
         {
+            //_expressions.Add(expression);
             if (expression == null) throw new ArgumentNullException(nameof(expression));
 
             Sql.AppendLine("(");
@@ -169,37 +190,45 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                                     }
 
                                 }
+
+                                if (select.Predicate is ExistsExpression rrexists)
+                                {
+                                    var subQuery = rrexists.Subquery;
+                                    var subTable = subQuery.GetTableForQuerySource(querySource);
+                                    if (subTable != null && prop.DeclaringEntityType.ClrType == subTable.QuerySource.ItemType)
+                                        table = subTable;
+                                }
                             }
                         }
                         else
                         {
-                            //foreach (var t in _tableExpressions.Reverse<TableExpression>())
-                            //{
-                            //    if (t.QuerySource.ItemType == prop.DeclaringEntityType.ClrType)
-                            //    {
-                            //        table = t;
+                            foreach (var t in _tableExpressions.Reverse<TableExpression>())
+                            {
+                                if (t.QuerySource.ItemType == prop.DeclaringEntityType.ClrType)
+                                {
+                                    table = t;
 
-                            //        foreach (var s in _selectExpressions.Reverse<SelectExpression>())
-                            //        {
-                            //            if (s == select) continue;
-                            //            if (s.Tables.Contains(valueFromOpenJsonExpression)) continue;
-                            //            if (s.Tables.Contains(t))
-                            //            {
-                            //                if (s.QuerySource is JoinClause joinClause)
-                            //                {
+                                    foreach (var s in _selectExpressions.Reverse<SelectExpression>())
+                                    {
+                                        if (s == select)
+                                            continue;
+                                        if (s.Tables.Contains(valueFromOpenJsonExpression))
+                                            continue;
+                                        if (s.Tables.Contains(t))
+                                        {
+                                            if (s.QuerySource is JoinClause joinClause && joinClause.ItemType != prop.DeclaringEntityType.ClrType)
+                                                break;
+                                            if (!string.IsNullOrWhiteSpace(s.Alias))
+                                            {
+                                                column = new ColumnExpression(columnName, prop, s);
+                                                break;
+                                            }
+                                        }
+                                    }
 
-                            //                }
-                            //                if (!string.IsNullOrWhiteSpace(s.Alias))
-                            //                {
-                            //                    column = new ColumnExpression(columnName, prop, s);
-                            //                    break;
-                            //                }
-                            //            }
-                            //        }
-
-                            //        break;
-                            //    }
-                            //}
+                                    break;
+                                }
+                            }
 
 
                             if (table == null)

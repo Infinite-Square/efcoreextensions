@@ -1,19 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2035
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28714.193
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions", "EFCore.Extensions\EFCore.Extensions.csproj", "{43FE2BF6-2B5D-45D7-9FBD-7ACFC29E4829}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.SqlServer", "EFCore.Extensions.SqlServer\EFCore.Extensions.SqlServer.csproj", "{B8EEC3EC-96FA-4E6F-8680-C8C2F9B7034B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{B01809E1-9E29-4AA5-9969-1D6C9C64DD41}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{B01809E1-9E29-4AA5-9969-1D6C9C64DD41}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.InMemory", "EFCore.Extensions.InMemory\EFCore.Extensions.InMemory.csproj", "{12E32E43-7231-40DC-9765-CAE67B67FFDC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.UnitTests", "EFCore.Extensions.UnitTests\EFCore.Extensions.UnitTests.csproj", "{931FF9E5-0FE9-43FA-9DF0-538758F1D0BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.Extensions.SqlServer.UnitTests", "EFCore.Extensions.SqlServer.UnitTests\EFCore.Extensions.SqlServer.UnitTests.csproj", "{6B952A26-DD34-45F4-8EC7-2120F292399D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.Extensions.SqlServer.UnitTests", "EFCore.Extensions.SqlServer.UnitTests\EFCore.Extensions.SqlServer.UnitTests.csproj", "{6B952A26-DD34-45F4-8EC7-2120F292399D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DA9BE71E-E76B-4CCF-A21E-106A8C1FB902}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

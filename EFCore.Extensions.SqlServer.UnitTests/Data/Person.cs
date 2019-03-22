@@ -15,5 +15,7 @@ namespace EFCore.Extensions.SqlServer.UnitTests.Data
         public string Kinds { get; set; }
 
         public ICollection<GroupPerson> Groups { get; set; }
+
+        public Guid TenantId { get; set; }
     }
 }

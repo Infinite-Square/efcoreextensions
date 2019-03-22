@@ -9,5 +9,7 @@ namespace EFCore.Extensions.SqlServer.UnitTests.Data
         public string Name { get; set; }
 
         public ICollection<GroupPerson> Persons { get; set; }
+
+        public Guid TenantId { get; set; }
     }
 }
