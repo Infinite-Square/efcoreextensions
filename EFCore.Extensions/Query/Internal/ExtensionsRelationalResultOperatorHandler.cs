@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using EFCore.Extensions.Query.ResultOperators.Internal;
@@ -126,6 +127,38 @@ namespace EFCore.Extensions.Query.Internal
         private static Expression HandleValueFromOpenJson(HandlerContext handlerContext)
         {
             var resultOperator = (ValueFromOpenJsonOperator)handlerContext.ResultOperator;
+
+            var json = resultOperator.Json;
+            var mapping = handlerContext.QueryModelVisitor.QueryCompilationContext.QuerySourceMapping;
+            //var visitor = handlerContext.CreateSqlTranslatingVisitor();
+            //var jjson = visitor.Visit(json);
+
+            var nwe = new NavigationRewritingExpressionVisitor(handlerContext.QueryModelVisitor, true);
+            json = nwe.Visit(json);
+            if (json != resultOperator.Json)
+            {
+                //var selectExpression = handlerContext.SelectExpression;
+                var selectExpression = handlerContext.QueryModelVisitor.ParentQueryModelVisitor.Queries.First();
+                var queryModel = handlerContext.QueryModel;
+                //nwe.Rewrite(queryModel, null);
+                //nwe.InjectSubqueryToCollectionsInProjection(queryModel);
+                //nwe.Rewrite(queryModel, null);
+                //var visitor = handlerContext.CreateSqlTranslatingVisitor();
+                var visitor = resultOperator.Context.SqlTranslatingExpressionVisitorFactory.Create(handlerContext.QueryModelVisitor.ParentQueryModelVisitor, selectExpression, null, true);
+
+                if (selectExpression.IsDistinct
+                    || selectExpression.Limit != null
+                    || selectExpression.Offset != null)
+                    //|| (selectExpression.GroupBy.Count > 0
+                    //    && !IsGroupByAggregate(queryModel)))
+                {
+                    selectExpression.PushDownSubquery();
+                    selectExpression.ExplodeStarProjection();
+                }
+
+                var jjson = visitor.Visit(json);
+            }
+
             return (Expression)_transformClientExpressionMethodInfo
                 .MakeGenericMethod(typeof(IEnumerable<JsonResult<string>>))
                 .Invoke(null, new object[] { handlerContext, false });

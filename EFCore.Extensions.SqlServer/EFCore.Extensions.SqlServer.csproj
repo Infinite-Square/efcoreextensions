@@ -5,10 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="2.2.3" />
+    <Compile Include="..\EFCore.Extensions\SharedTypeExtensions.cs" Link="SharedTypeExtensions.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\aspnet\EntityFrameworkCore\src\EFCore.SqlServer\EFCore.SqlServer.csproj" />
     <ProjectReference Include="..\EFCore.Extensions\EFCore.Extensions.csproj" />
   </ItemGroup>
 

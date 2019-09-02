@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
@@ -13,6 +14,10 @@ using System.Reflection;
 
 namespace EFCore.Extensions.Query
 {
+    using JetBrains.Annotations;
+    using Microsoft.EntityFrameworkCore.Metadata;
+    using Microsoft.EntityFrameworkCore.Query.Expressions;
+    using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
     using ResultHandler = Func<EntityQueryModelVisitor, ResultOperatorBase, QueryModel, Expression>;
 
     public class ExtensionsResultOperatorHandler : ResultOperatorHandler

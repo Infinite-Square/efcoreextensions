@@ -13,9 +13,17 @@ namespace ConsoleApp1
         public string Values { get; set; }
     }
 
+    public class Order
+    {
+        public Guid Id { get; set; }
+        public Guid PersonId { get; set; }
+        public Person Person { get; set; }
+    }
+
     public class ApplicationContext : DbContext
     {
         public DbSet<Person> Persons { get; set; }
+        public DbSet<Order> Orders { get; set; }
 
         public ApplicationContext()
         {

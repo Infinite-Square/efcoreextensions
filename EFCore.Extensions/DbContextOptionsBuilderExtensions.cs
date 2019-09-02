@@ -17,6 +17,7 @@ namespace Microsoft.EntityFrameworkCore
             //optionsBuilder.ReplaceService<IQueryAnnotationExtractor, ExtensionsQueryAnnotationExtractor>();
 
             optionsBuilder.ReplaceService<IResultOperatorHandler, ExtensionsResultOperatorHandler>();
+            //optionsBuilder.ReplaceService<IRelationalResultOperatorHandler, ExtensionsRelationalResultOperatorHandler>();
             optionsBuilder.ReplaceService<IQueryAnnotationExtractor, ExtensionsQueryAnnotationExtractor>();
             optionsBuilder.ReplaceService<IRelationalResultOperatorHandler, ExtensionsRelationalResultOperatorHandler>();
             optionsBuilder.ReplaceService<IModelCustomizer, ExtensionsRelationalModelCustomizer>();

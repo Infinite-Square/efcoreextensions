@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Query.ResultOperators;
+﻿using Microsoft.EntityFrameworkCore.Query.Expressions;
+using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
+using Microsoft.EntityFrameworkCore.Query.ResultOperators;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using Remotion.Linq.Clauses.ResultOperators;
@@ -12,14 +14,16 @@ namespace EFCore.Extensions.Query.ResultOperators.Internal
     public class ValueFromOpenJsonOperator : SequenceTypePreservingResultOperatorBase, ICloneableQueryAnnotation
     {
         public MethodCallExpressionParseInfo ParseInfo { get; }
-        public Expression Json { get; }
+        public Expression Json { get; private set; }
         public Expression Path { get; }
+        public CompilationContext Context { get; }
 
         public ValueFromOpenJsonOperator(MethodCallExpressionParseInfo parseInfo, Expression json, Expression path)
         {
             ParseInfo = parseInfo;
             Json = json;
             Path = path;
+            Context = new CompilationContext();
         }
 
         ICloneableQueryAnnotation ICloneableQueryAnnotation.Clone(IQuerySource querySource, QueryModel queryModel)
@@ -62,6 +66,7 @@ namespace EFCore.Extensions.Query.ResultOperators.Internal
         /// </summary>
         public override void TransformExpressions(Func<Expression, Expression> transformation)
         {
+            Json = transformation(Json);
         }
 
         /// <summary>
@@ -71,6 +76,13 @@ namespace EFCore.Extensions.Query.ResultOperators.Internal
         public override StreamedSequence ExecuteInMemory<T>(StreamedSequence input)
         {
             return input;
+        }
+
+        public class CompilationContext
+        {
+            public Expression Json { get; set; }
+            public SelectExpression SelectExpression { get; set; }
+            public ISqlTranslatingExpressionVisitorFactory SqlTranslatingExpressionVisitorFactory { get; set; }
         }
     }
 }

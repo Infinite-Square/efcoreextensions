@@ -97,6 +97,18 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             return base.VisitTable(tableExpression);
         }
 
+        public virtual Expression VisitForSystemTimeAsOf(ForSystemTimeAsOfTableExpression expression)
+        {
+            Sql
+                .Append(SqlGenerator.DelimitIdentifier(expression.Table, expression.Schema))
+                //.Append(" FOR SYSTEM_TIME AS OF '2015-09-01 T10:00:00.7230011'")
+                .Append($" FOR SYSTEM_TIME AS OF '{expression.DateTime.ToString("s")}'")
+                .Append(AliasSeparator)
+                .Append(SqlGenerator.DelimitIdentifier(expression.Alias));
+
+            return expression;
+        }
+
         //protected override Expression VisitSubQuery(SubQueryExpression expression)
         //{
         //    _expressions.Add(expression);

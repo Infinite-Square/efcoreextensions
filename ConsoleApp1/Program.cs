@@ -12,15 +12,17 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using EFCore.Extensions.SqlServer;
 
 namespace ConsoleApp1
 {
     internal class Program
     {
-        private static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Console.WriteLine("Hello World!");
-            MainAsync().Wait();
+            //MainAsync().Wait();
+            await MainAsync();
             Console.ReadKey();
         }
 
@@ -30,10 +32,12 @@ namespace ConsoleApp1
             serviceCollection
                 .AddDbContext<ApplicationContext>(builder =>
                 {
-                    //builder.UseLoggerFactory(new LoggerFactory(new[]
-                    //{
-                    //    new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
-                    //}));
+                    builder.UseLoggerFactory(new LoggerFactory(new[]
+                    {
+                        new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
+                        //new ConsoleLoggerProvider((_, __) => true, true)
+                    }))
+                    .EnableSensitiveDataLogging();
                     builder.UseExtensions(extensions =>
                     {
                         extensions.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
@@ -45,6 +49,48 @@ namespace ConsoleApp1
         }
 
         private static async Task MainAsync()
+        {
+            using (var provider = BuildServiceProvider())
+            {
+                using (var appContext = provider.GetRequiredService<ApplicationContext>())
+                {
+                    //var persons = await appContext
+                    //    .Persons
+                    //    .ForSystemTime().AsOf(DateTime.Now)
+                    //    .ToListAsync();
+                    //Console.WriteLine(persons.Count);
+
+                    IQueryable<JsonResult<string>> json = appContext.Set<JsonResult<string>>();
+                    //{
+                    //    var orders = await appContext
+                    //    .Orders
+                    //    .Where(o => o.Person.Name != null)
+                    //    .ToListAsync();
+                    //    Console.WriteLine(orders.Count);
+                    //    var count = await appContext
+                    //        .Orders
+                    //        .Where(o => o.Person.Name != null)
+                    //        .CountAsync();
+                    //    Console.WriteLine(count);
+                    //}
+                    {
+                        var orders = await appContext
+                        .Orders
+                        .Include(o => o.Person)
+                        .Where(o => json.ValueFromOpenJson(o.Person.KindsList, "$").Select(v => v.Value).Contains("k"))
+                        .ToListAsync();
+                        Console.WriteLine(orders.Count);
+                        var count = await appContext
+                            .Orders
+                            .Where(o => json.ValueFromOpenJson(o.Person.KindsList, "$").Select(v => v.Value).Contains("k"))
+                            .CountAsync();
+                        Console.WriteLine(count);
+                    }
+                }
+            }
+        }
+
+        private static async Task MainAsyncOld2()
         {
             using (var provider = BuildServiceProvider())
             {
@@ -75,17 +121,22 @@ namespace ConsoleApp1
                     using (var scope = catcher1.EnableCatching())
                     {
                         var count1 = await c1.Persons.CountAsync();
-                        if (count1 != 0) throw new Exception();
-                        if (scope.Commands.Count() != 1) throw new Exception();
+                        if (count1 != 0)
+                            throw new Exception();
+                        if (scope.Commands.Count() != 1)
+                            throw new Exception();
                         var count2 = await c2.Persons.CountAsync();
-                        if (count2 == 0) throw new Exception();
-                        if (scope.Commands.Count() != 1) throw new Exception();
+                        if (count2 == 0)
+                            throw new Exception();
+                        if (scope.Commands.Count() != 1)
+                            throw new Exception();
 
                         IQueryable<JsonResult<string>> json = c1.Set<JsonResult<string>>();
                         var pp = await c1.Persons
                             .Where(p => json.ValueFromOpenJson(p.KindsList, "$").Select(jr => jr.Value).Contains("kind2"))
                             .ToListAsync();
-                        if (scope.Commands.Count() != 2) throw new Exception();
+                        if (scope.Commands.Count() != 2)
+                            throw new Exception();
 
                         c1.Persons.Add(new Person
                         {
@@ -93,10 +144,11 @@ namespace ConsoleApp1
                         });
                         await c1.SaveChangesAsync();
 
-                        
-                        
 
-                        if (scope.Commands.Count() != 3) throw new Exception();
+
+
+                        if (scope.Commands.Count() != 3)
+                            throw new Exception();
                     }
                 }
             }

@@ -1,6 +1,7 @@
 ﻿using EFCore.Extensions.SqlCommandCatching;
-using EFCore.Extensions.SqlConnectionUtilities;
+using EFCore.Extensions.SqlServer.Query;
 using EFCore.Extensions.SqlServer.Query.ExpressionVisitors;
+using EFCore.Extensions.SqlServer.Query.Internal;
 using EFCore.Extensions.SqlServer.Query.Sql.Internal;
 using EFCore.Extensions.SqlServer.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -11,7 +12,6 @@ using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
 using System.Data.Common;
 
 namespace Microsoft.EntityFrameworkCore
@@ -25,6 +25,8 @@ namespace Microsoft.EntityFrameworkCore
 
             optionsBuilder.ReplaceService<IResultOperatorHandler, ResultOperatorHandler>();
             optionsBuilder.ReplaceService<IQueryAnnotationExtractor, QueryAnnotationExtractor>();
+
+            optionsBuilder.ReplaceService<IQueryCompilationContextFactory, ExtensionsSqlServerQueryCompilationContextFactory>();
 
             return optionsBuilder;
         }

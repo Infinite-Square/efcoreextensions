@@ -1,4 +1,5 @@
 ﻿using EFCore.Extensions.SqlServer.Query.Sql.Internal;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Remotion.Linq.Clauses;
@@ -25,17 +26,17 @@ namespace EFCore.Extensions.SqlServer.Query.Expressions
         public Expression Json { get; }
         public Expression Path { get; }
 
-        protected override Expression VisitChildren(ExpressionVisitor visitor)
-        {
-            var fix = new FixVisitor();
-            var newJsonExpression = visitor.Visit(fix.Visit(Json));
-            var newPathExpression = visitor.Visit(fix.Visit(Path));
+        //protected override Expression VisitChildren(ExpressionVisitor visitor)
+        //{
+        //    var fix = new FixVisitor();
+        //    var newJsonExpression = visitor.Visit(fix.Visit(Json));
+        //    var newPathExpression = visitor.Visit(fix.Visit(Path));
 
-            return newJsonExpression != Json
-                   || newPathExpression != Path
-                ? new ValueFromOpenJsonExpression(QuerySource, newJsonExpression, newPathExpression, Alias)
-                : this;
-        }
+        //    return newJsonExpression != Json
+        //           || newPathExpression != Path
+        //        ? new ValueFromOpenJsonExpression(QuerySource, newJsonExpression, newPathExpression, Alias)
+        //        : this;
+        //}
 
         protected override Expression Accept(ExpressionVisitor visitor)
         {
@@ -46,6 +47,16 @@ namespace EFCore.Extensions.SqlServer.Query.Expressions
 
         private class FixVisitor : ExpressionVisitor
         {
+            protected override Expression VisitExtension(Expression node)
+            {
+                var querySource = node.TryGetReferencedQuerySource();
+                if (querySource != null)
+                {
+
+                }
+                return base.VisitExtension(node);
+            }
+
             protected override Expression VisitParameter(ParameterExpression node)
             {
                 if (node.Name == null)
