@@ -114,7 +114,8 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
         public virtual Expression VisitValueFromOpenJson(ValueFromOpenJsonExpression expression)
         {
             //_expressions.Add(expression);
-            if (expression == null) throw new ArgumentNullException(nameof(expression));
+            if (expression == null)
+                throw new ArgumentNullException(nameof(expression));
 
             Sql.AppendLine("(");
 
@@ -135,9 +136,12 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
             IReadOnlyDictionary<string, object> parameters)
         {
             //if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
-            if (json == null) throw new ArgumentNullException(nameof(json));
-            if (path == null) throw new ArgumentNullException(nameof(path));
-            if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+            if (json == null)
+                throw new ArgumentNullException(nameof(json));
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
+            if (parameters == null)
+                throw new ArgumentNullException(nameof(parameters));
 
             string pathValue = null;
             if (path != null)
@@ -171,8 +175,10 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                             while (table is SelectExpression selectTable)
                             {
                                 var tmp = selectTable.GetTableForQuerySource(querySource);
-                                if (tmp != null) table = tmp;
+                                if (tmp != null)
+                                    table = tmp;
                             }
+
                             if (prop.DeclaringEntityType.ClrType != table.QuerySource.ItemType)
                             {
                                 // we have to explore in predicate subquery
@@ -243,7 +249,8 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                                             while (table is SelectExpression selectTable)
                                             {
                                                 var tmp = selectTable.GetTableForQuerySource(querySource);
-                                                if (tmp != null) table = tmp;
+                                                if (tmp != null)
+                                                    table = tmp;
                                             }
                                             if (prop.DeclaringEntityType.ClrType == table.QuerySource.ItemType)
                                                 break;
@@ -253,15 +260,18 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                                     {
                                         try
                                         {
-                                            if (t.QuerySource.ItemType != prop.DeclaringEntityType.ClrType) continue;
+                                            if (t.QuerySource.ItemType != prop.DeclaringEntityType.ClrType)
+                                                continue;
                                             var bind = select.BindProperty(prop, t.QuerySource);
-                                            if (bind == null) continue;
+                                            if (bind == null)
+                                                continue;
                                             if (bind is ColumnExpression c)
                                             {
                                                 column = c;
                                                 break;
                                             }
-                                            else throw new NotImplementedException();
+                                            else
+                                                throw new NotImplementedException();
                                         }
                                         catch
                                         {
@@ -271,7 +281,52 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                                 }
                             }
 
-                            if (table == null && column == null) throw new NotImplementedException();
+                            if (table == null && column == null)
+                                throw new NotImplementedException();
+                        }
+
+                        if (prop.DeclaringEntityType.ClrType != table.QuerySource.ItemType)
+                        {
+                            foreach (var t in select.Tables/*.Reverse()*/)
+                            {
+                                if (t is JoinExpressionBase join && join.TableExpression is SelectExpression joinSelect)
+                                {
+                                    table = joinSelect.GetTableForQuerySource(querySource);
+                                    if (table != null)
+                                    {
+                                        while (table is SelectExpression selectTable)
+                                        {
+                                            var tmp = selectTable.GetTableForQuerySource(querySource);
+                                            if (tmp != null)
+                                                table = tmp;
+                                        }
+                                        if (prop.DeclaringEntityType.ClrType == table.QuerySource.ItemType)
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        if (t.QuerySource.ItemType != prop.DeclaringEntityType.ClrType)
+                                            continue;
+                                        var bind = select.BindProperty(prop, t.QuerySource);
+                                        if (bind == null)
+                                            continue;
+                                        if (bind is ColumnExpression c)
+                                        {
+                                            column = c;
+                                            break;
+                                        }
+                                        else
+                                            throw new NotImplementedException();
+                                    }
+                                    catch
+                                    {
+                                        continue;
+                                    }
+                                }
+                            }
                         }
 
                         column = column ?? new ColumnExpression(columnName, prop, table);

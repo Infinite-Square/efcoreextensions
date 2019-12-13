@@ -3,12 +3,15 @@ using EFCore.Extensions.SqlConnectionUtilities;
 using EFCore.Extensions.SqlServer.Query.ExpressionVisitors;
 using EFCore.Extensions.SqlServer.Query.Sql.Internal;
 using EFCore.Extensions.SqlServer.Storage.Internal;
+using EFCore.Extensions.SqlServer.Update.Internal;
+using EFCore.Extensions.Storage;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -42,7 +45,7 @@ namespace Microsoft.EntityFrameworkCore
                 .UseSqlServerServices()
                 .UseSqlServer(connectionString, sqlServerOptionsAction);
         }
-        
+
         public static void UseSqlServer(this ExtensionsDbContextOptionsBuilder optionsBuilder, DbConnection connection, Action<SqlServerDbContextOptionsBuilder> sqlServerOptionsAction = null)
         {
             optionsBuilder.OptionsBuilder
@@ -56,7 +59,7 @@ namespace Microsoft.EntityFrameworkCore
                 .UseSqlServerServices()
                 .UseSqlServer(connectionString, sqlServerOptionsAction);
         }
-        
+
         public static void UseSqlServer<TContext>(this ExtensionsDbContextOptionsBuilder<TContext> optionsBuilder, DbConnection connection, Action<SqlServerDbContextOptionsBuilder> sqlServerOptionsAction = null) where TContext : DbContext
         {
             optionsBuilder.OptionsBuilder
@@ -67,9 +70,44 @@ namespace Microsoft.EntityFrameworkCore
         public static void EnableSqlServerCommandCatcher(this ExtensionsDbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.OptionsBuilder
-                .ReplaceService<IRelationalConnection, ExtensionsSqlServerConnection>();
+                .ReplaceService<IRelationalConnection, ExtensionsSqlServerConnection>()
+                .ReplaceService<IRelationalTransactionFactory, ExtensionsRelationalTransactionFactory>()
+                .ReplaceService<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>();
             var infra = (IDbContextOptionsBuilderInfrastructure)optionsBuilder.OptionsBuilder;
             infra.AddOrUpdateExtension(new SqlServerCommandCatcherExtension());
+        }
+
+        public static void EnableSqlServerModificationCommandBatchEvents(this ExtensionsDbContextOptionsBuilder optionsBuilder
+            , ISqlServerModificationCommandBatchEvents events)
+        {
+            optionsBuilder.OptionsBuilder
+                .ReplaceService<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>();
+            var infra = (IDbContextOptionsBuilderInfrastructure)optionsBuilder.OptionsBuilder;
+            infra.AddOrUpdateExtension(new SqlServerModificationCommandBatchEventsExtension(events));
+        }
+
+        private class SqlServerModificationCommandBatchEventsExtension : IDbContextOptionsExtension
+        {
+            private ISqlServerModificationCommandBatchEvents _events;
+
+            public SqlServerModificationCommandBatchEventsExtension(ISqlServerModificationCommandBatchEvents events)
+            {
+                _events = events;
+            }
+
+            public string LogFragment => string.Empty;
+
+            public bool ApplyServices(IServiceCollection services)
+            {
+                services.AddSingleton(_events);
+                return true;
+            }
+
+            public long GetServiceProviderHashCode() => 0;
+
+            public void Validate(IDbContextOptions options)
+            {
+            }
         }
 
         private class SqlServerCommandCatcherExtension : IDbContextOptionsExtension
