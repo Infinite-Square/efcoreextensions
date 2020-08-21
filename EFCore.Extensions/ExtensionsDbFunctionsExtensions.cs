@@ -147,7 +147,7 @@ namespace Microsoft.EntityFrameworkCore
                         {
                             var six = next.IndexOf("\"", 1);
                             if (six <= 0) throw new ArgumentException(nameof(path));
-                            next = next.Substring(1, six);
+                            next = next.Substring(1, six - 1);
                         }
                         if (current is IDictionary<string, JToken> jobj)
                         {
@@ -166,7 +166,7 @@ namespace Microsoft.EntityFrameworkCore
                         }
 
                         //if (current is JArray ja)
-                        return current == before 
+                        return current == before
                             ? lax ? (JToken)null : throw new ArgumentException(nameof(path))
                             : current;
                     });
@@ -177,10 +177,12 @@ namespace Microsoft.EntityFrameworkCore
 
         public static IEnumerable<JsonResult<T>> ValueFromOpenJson<T>(this IQueryable<JsonResult<T>> self, string json, string path = null)
         {
+            if (string.IsNullOrWhiteSpace(json))
+                return Enumerable.Empty<JsonResult<T>>();
             var token = Extract(json, path);
             if (token == null) // we are in lax mode so we return an empty collection
                 return Enumerable.Empty<JsonResult<T>>();
-                //return null;
+            //return null;
 
             if (token.Type == JTokenType.Array)
             {

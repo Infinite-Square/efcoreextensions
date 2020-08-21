@@ -1,11 +1,9 @@
-﻿using EFCore.Extensions.SqlCommandCatching;
-using EFCore.Extensions.SqlConnectionUtilities;
+﻿using EFCore.Extensions.ChangeTracker;
+using EFCore.Extensions.SqlCommandCatching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EFCore.Extensions
@@ -47,6 +45,11 @@ namespace EFCore.Extensions
                 if (info == null) return null;
                 return info.Command.CommandText;
             }
+        }
+
+        public static ChangeTrackerWatcher GetChangeTrackerWatcher(this DbContext self)
+        {
+            return new ChangeTrackerWatcher(self);
         }
     }
 }

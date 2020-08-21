@@ -78,19 +78,23 @@ namespace Microsoft.EntityFrameworkCore
         }
 
         public static void EnableSqlServerModificationCommandBatchEvents(this ExtensionsDbContextOptionsBuilder optionsBuilder
-            , ISqlServerModificationCommandBatchEvents events)
+            , Func<ISqlServerModificationCommandBatchEvents> events)
         {
             optionsBuilder.OptionsBuilder
                 .ReplaceService<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>();
+
             var infra = (IDbContextOptionsBuilderInfrastructure)optionsBuilder.OptionsBuilder;
             infra.AddOrUpdateExtension(new SqlServerModificationCommandBatchEventsExtension(events));
+
+            //optionsBuilder.OptionsBuilder
+            //    .ReplaceService<ISqlServerModificationCommandBatchEvents>()
         }
 
         private class SqlServerModificationCommandBatchEventsExtension : IDbContextOptionsExtension
         {
-            private ISqlServerModificationCommandBatchEvents _events;
+            private readonly Func<ISqlServerModificationCommandBatchEvents> _events;
 
-            public SqlServerModificationCommandBatchEventsExtension(ISqlServerModificationCommandBatchEvents events)
+            public SqlServerModificationCommandBatchEventsExtension(Func<ISqlServerModificationCommandBatchEvents> events)
             {
                 _events = events;
             }
@@ -99,11 +103,14 @@ namespace Microsoft.EntityFrameworkCore
 
             public bool ApplyServices(IServiceCollection services)
             {
-                services.AddSingleton(_events);
+                var builder = new EntityFrameworkServicesBuilder(services)
+                    .TryAddProviderSpecificServices(map => map
+                        .TryAddScoped(_ => _events()));
+                //services.AddScoped(_ => _events());
                 return true;
             }
 
-            public long GetServiceProviderHashCode() => 0;
+            public long GetServiceProviderHashCode() => 0;// _events.GetHashCode();
 
             public void Validate(IDbContextOptions options)
             {

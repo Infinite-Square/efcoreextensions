@@ -56,7 +56,11 @@ namespace EFCore.Extensions.UnitTests
         [Fact]
         public void ParseArrayOfEntities()
         {
-            //var result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entitiesJson, "$.P3");
+            var result = ExtensionsDbFunctionsExtensions.ValueFromOpenJson<string>(null, _entitiesJson, "$.P3");
+            //to iterate through an array we have to set a with clause
+            //in lax mode, the result is an empty table
+            Assert.Empty(result);
+
             //Assert.Null(result);
             //Assert.Equal(3, result.Count());
             //Assert.Equal(_entities[0].P3, result[0].Value);

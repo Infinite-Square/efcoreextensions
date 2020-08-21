@@ -13,8 +13,10 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ConsoleApp1
@@ -45,7 +47,7 @@ namespace ConsoleApp1
                         extensions.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
                         //extensions.UseInMemoryDatabase("inmemory");
                         extensions.EnableSqlServerCommandCatcher();
-                        extensions.EnableSqlServerModificationCommandBatchEvents(new ModificationCommandBatchEvents());
+                        extensions.EnableSqlServerModificationCommandBatchEvents(() => new ModificationCommandBatchEvents());
                     });
                 }, ServiceLifetime.Transient);
             return serviceCollection.BuildServiceProvider();
@@ -68,10 +70,31 @@ namespace ConsoleApp1
                             //nameof(Person.Values) = "deleted"
                             var valuesProperty = entry.EntityType.FindProperty(nameof(Person.Values));
 
-                            appender.Append(new ModificationCommand(command.TableName, command.Schema, new List<ColumnModification>(command.ColumnModifications)
+                            //var modificationCommand = new ModificationCommand(command.TableName, command.Schema, new List<ColumnModification>(command.ColumnModifications)
+                            //{
+                            //    new ColumnModification(valuesProperty.Relational().ColumnName, entry.GetOriginalValue(valuesProperty), "deleted", valuesProperty, false, true, false, false)
+                            //});
+
+                            var modificationCommand = new ModificationCommand(command.TableName, command.Schema
+                                , new List<ColumnModification>(command.ColumnModifications.Select(cm => new ColumnModification(cm.Entry
+                                    , cm.Property
+                                    , new Microsoft.EntityFrameworkCore.Metadata.RelationalPropertyAnnotations(cm.Property)
+                                    {
+                                        ColumnName = cm.ColumnName
+                                    }
+                                    , () => $"{cm.ParameterName}_ewh"
+                                    , cm.IsRead
+                                    , cm.IsWrite
+                                    , cm.IsKey
+                                    , cm.IsCondition
+                                    , cm.IsConcurrencyToken)))
                             {
                                 new ColumnModification(valuesProperty.Relational().ColumnName, entry.GetOriginalValue(valuesProperty), "deleted", valuesProperty, false, true, false, false)
-                            }));
+                            });
+
+                            //appender.Append(modificationCommand);
+                            appender.Prepend(modificationCommand);
+
                         }
                     }
                 }
@@ -106,8 +129,11 @@ namespace ConsoleApp1
 
                 ctx.Persons.Remove(newp);
 
-                await ctx.SaveChangesAsync();
-
+                var res = await ctx.SaveChangesAsync();
+                if (res != 2)
+                {
+                    Debugger.Break();
+                }
                 //var toDeletes = ctx.ChangeTracker.Entries<Person>().Where(e => e.State == EntityState.Deleted).ToList();
                 //using (var sqlCatch = ctx.GetSqlCommandCatcher().EnableCatching())
                 //{
@@ -200,7 +226,7 @@ namespace ConsoleApp1
                         {
                             Name = "toto3"
                         }
-                    });
+                    }, CancellationToken.None);
 
 
                     var p1 = (IInfrastructure<IServiceProvider>)c1;

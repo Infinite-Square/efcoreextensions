@@ -17,7 +17,7 @@ namespace EFCore.Extensions.SqlServer.UnitTests
                 .Build()
                 .Get<AppSettings>();
 
-            var tmp = Path.GetTempPath();
+            var tmp = Directory.GetCurrentDirectory(); // Path.GetTempPath();
             settings.ConnectionString = settings.ConnectionString.Replace("{tmp}", tmp);
 
             return settings;

@@ -9,7 +9,7 @@ using Xunit;
 
 namespace EFCore.Extensions.SqlServer.UnitTests
 {
-    public class GlobalTrueDatabaseFixture : IAsyncLifetime, IDisposable
+    public sealed class GlobalTrueDatabaseFixture : IAsyncLifetime, IDisposable
     {
         private readonly ServiceProvider _services;
 
