@@ -1,5 +1,6 @@
-﻿using EFCore.Extensions.SqlCommandCatching;
-using EFCore.Extensions.SqlConnectionUtilities;
+﻿using EFCore.Extensions.Internal;
+using EFCore.Extensions.SqlCommandCatching;
+using EFCore.Extensions.SqlServer.Query;
 using EFCore.Extensions.SqlServer.Query.ExpressionVisitors;
 using EFCore.Extensions.SqlServer.Query.Sql.Internal;
 using EFCore.Extensions.SqlServer.Storage.Internal;
@@ -14,21 +15,42 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
 using System.Data.Common;
 
 namespace Microsoft.EntityFrameworkCore
 {
     public static class DbContextOptionsBuilderExtensions
     {
+        private static readonly ServiceReplacementCollection _baseServiceReplacements = ServiceReplacement.Collection(s => s
+            .Add<IQuerySqlGeneratorFactory, ExtensionsQuerySqlGeneratorFactory>()
+            .Add<IEntityQueryableExpressionVisitorFactory, ExtensionsRelationalEntityQueryableExpressionVisitorFactory>()
+            .Add<IResultOperatorHandler, ResultOperatorHandler>()
+            .Add<IQueryAnnotationExtractor, QueryAnnotationExtractor>()
+            .Add<ICompiledQueryCacheKeyGenerator, ExtensionsCompiledQueryCacheKeyGenerator>()
+        );
+
+        private static readonly ServiceReplacementCollection _commandCatcherReplacements = ServiceReplacement.Collection(s => s
+            .Add<IRelationalConnection, ExtensionsSqlServerConnection>()
+            .Add<IRelationalTransactionFactory, ExtensionsRelationalTransactionFactory>()
+            .Add<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>()
+        );
+
+        private static readonly ServiceReplacementCollection _modificationCommandBatchEventsReplacements = ServiceReplacement.Collection(s => s
+            .Add<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>()
+        );
+
+        public static IServiceCollection AddEntityFrameworkSqlServerExtensions(this IServiceCollection services, Action<SqlServerExtensionsOptions> options = null)
+        {
+            services.AddEntityFrameworkExtensions();
+            _baseServiceReplacements.Apply(services);
+            options?.Invoke(new SqlServerExtensionsOptions(services));
+            return services;
+        }
+
         private static DbContextOptionsBuilder UseSqlServerServices(this DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.ReplaceService<IQuerySqlGeneratorFactory, ExtensionsQuerySqlGeneratorFactory>();
-            optionsBuilder.ReplaceService<IEntityQueryableExpressionVisitorFactory, ExtensionsRelationalEntityQueryableExpressionVisitorFactory>();
-
-            optionsBuilder.ReplaceService<IResultOperatorHandler, ResultOperatorHandler>();
-            optionsBuilder.ReplaceService<IQueryAnnotationExtractor, QueryAnnotationExtractor>();
-
+            if (!optionsBuilder.IsInternalServiceProviderConfigured())
+                _baseServiceReplacements.Apply(optionsBuilder);
             return optionsBuilder;
         }
 
@@ -67,27 +89,58 @@ namespace Microsoft.EntityFrameworkCore
                 .UseSqlServer(connection, sqlServerOptionsAction);
         }
 
+        public static SqlServerExtensionsOptions EnableSqlServerCommandCatcher(this SqlServerExtensionsOptions self)
+        {
+            _commandCatcherReplacements.Apply(self.Services);
+            return self;
+        }
+
         public static void EnableSqlServerCommandCatcher(this ExtensionsDbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.OptionsBuilder
-                .ReplaceService<IRelationalConnection, ExtensionsSqlServerConnection>()
-                .ReplaceService<IRelationalTransactionFactory, ExtensionsRelationalTransactionFactory>()
-                .ReplaceService<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>();
+            if (!optionsBuilder.OptionsBuilder.IsInternalServiceProviderConfigured())
+                _commandCatcherReplacements.Apply(optionsBuilder.OptionsBuilder);
             var infra = (IDbContextOptionsBuilderInfrastructure)optionsBuilder.OptionsBuilder;
             infra.AddOrUpdateExtension(new SqlServerCommandCatcherExtension());
+        }
+
+        public static SqlServerExtensionsOptions EnableSqlServerModificationCommandBatchEvents(this SqlServerExtensionsOptions self
+            , Func<ISqlServerModificationCommandBatchEvents> events)
+        {
+            _modificationCommandBatchEventsReplacements.Apply(self.Services);
+            self.Services.AddScoped(_ => events());
+            return self;
+        }
+
+        public static SqlServerExtensionsOptions EnableSqlServerModificationCommandBatchEvents<T>(this SqlServerExtensionsOptions self
+            , T ctx
+            , Func<T, ISqlServerModificationCommandBatchEvents> events)
+        {
+            _modificationCommandBatchEventsReplacements.Apply(self.Services);
+            self.Services.AddScoped(_ => events(ctx));
+            return self;
         }
 
         public static void EnableSqlServerModificationCommandBatchEvents(this ExtensionsDbContextOptionsBuilder optionsBuilder
             , Func<ISqlServerModificationCommandBatchEvents> events)
         {
-            optionsBuilder.OptionsBuilder
-                .ReplaceService<IModificationCommandBatchFactory, ExtensionsSqlServerModificationCommandBatchFactory>();
+            if (optionsBuilder.OptionsBuilder.IsInternalServiceProviderConfigured())
+                throw new InvalidOperationException();
 
+            _modificationCommandBatchEventsReplacements.Apply(optionsBuilder.OptionsBuilder);
             var infra = (IDbContextOptionsBuilderInfrastructure)optionsBuilder.OptionsBuilder;
             infra.AddOrUpdateExtension(new SqlServerModificationCommandBatchEventsExtension(events));
+        }
 
-            //optionsBuilder.OptionsBuilder
-            //    .ReplaceService<ISqlServerModificationCommandBatchEvents>()
+        public static void EnableSqlServerModificationCommandBatchEvents<T>(this ExtensionsDbContextOptionsBuilder optionsBuilder
+            , T ctx
+            , Func<T, ISqlServerModificationCommandBatchEvents> events)
+        {
+            if (optionsBuilder.OptionsBuilder.IsInternalServiceProviderConfigured())
+                throw new InvalidOperationException();
+
+            _modificationCommandBatchEventsReplacements.Apply(optionsBuilder.OptionsBuilder);
+            var infra = (IDbContextOptionsBuilderInfrastructure)optionsBuilder.OptionsBuilder;
+            infra.AddOrUpdateExtension(new SqlServerModificationCommandBatchEventsExtension<T>(ctx, events));
         }
 
         private class SqlServerModificationCommandBatchEventsExtension : IDbContextOptionsExtension
@@ -106,6 +159,35 @@ namespace Microsoft.EntityFrameworkCore
                 var builder = new EntityFrameworkServicesBuilder(services)
                     .TryAddProviderSpecificServices(map => map
                         .TryAddScoped(_ => _events()));
+                //services.AddScoped(_ => _events());
+                return true;
+            }
+
+            public long GetServiceProviderHashCode() => 0;// _events.GetHashCode();
+
+            public void Validate(IDbContextOptions options)
+            {
+            }
+        }
+
+        private class SqlServerModificationCommandBatchEventsExtension<T> : IDbContextOptionsExtension
+        {
+            private readonly T _ctx;
+            private readonly Func<T, ISqlServerModificationCommandBatchEvents> _events;
+
+            public SqlServerModificationCommandBatchEventsExtension(T ctx, Func<T, ISqlServerModificationCommandBatchEvents> events)
+            {
+                _ctx = ctx;
+                _events = events;
+            }
+
+            public string LogFragment => string.Empty;
+
+            public bool ApplyServices(IServiceCollection services)
+            {
+                var builder = new EntityFrameworkServicesBuilder(services)
+                    .TryAddProviderSpecificServices(map => map
+                        .TryAddScoped(_ => _events(_ctx)));
                 //services.AddScoped(_ => _events());
                 return true;
             }
@@ -136,6 +218,16 @@ namespace Microsoft.EntityFrameworkCore
             public void Validate(IDbContextOptions options)
             {
             }
+        }
+
+        public class SqlServerExtensionsOptions
+        {
+            public SqlServerExtensionsOptions(IServiceCollection services)
+            {
+                Services = services;
+            }
+
+            internal IServiceCollection Services { get; }
         }
     }
 }

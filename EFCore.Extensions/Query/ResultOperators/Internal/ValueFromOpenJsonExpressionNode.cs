@@ -1,14 +1,17 @@
-﻿using Remotion.Linq.Clauses;
+﻿using Microsoft.EntityFrameworkCore;
+using Remotion.Linq.Clauses;
 using Remotion.Linq.Parsing.Structure.IntermediateModel;
-using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
-using System.Text;
+using System.Reflection;
 
 namespace EFCore.Extensions.Query.ResultOperators.Internal
 {
     public class ValueFromOpenJsonExpressionNode : ResultOperatorExpressionNodeBase
     {
+        public static IEnumerable<MethodInfo> GetSupportedMethods()
+            => new[] { ExtensionsDbFunctionsExtensions.ValueFromOpenJsonMethod };
+
         private readonly MethodCallExpressionParseInfo _parseInfo;
         private readonly Expression _sql;
         private readonly Expression _arguments;

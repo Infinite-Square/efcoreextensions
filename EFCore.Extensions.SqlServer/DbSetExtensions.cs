@@ -1,7 +1,10 @@
 ﻿using EFCore.Extensions.SqlConnectionUtilities;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -33,9 +36,13 @@ namespace Microsoft.EntityFrameworkCore
             var data = new DataTable();
 
             var entityProperties = entityType.GetProperties();
+
+            if (pk.Properties.Count == 1)
+                entityProperties = entityProperties
+                .Where(p => !pk.Properties.Contains(p));
+
             var properties =
                 entityProperties
-                .Where(p => !pk.Properties.Contains(p))
                 .Select(property =>
                 {
                     var pi = property.PropertyInfo;
@@ -48,14 +55,14 @@ namespace Microsoft.EntityFrameworkCore
                     {
                         column.AllowDBNull = true;
                     }
-                    var getter = property.GetGetter();
-                    return (property, getter, columnName: pr.ColumnName);
+                    var getter = new EntityClrPropertyGetter<T>(stateManager, property);
+                    return (columnName: pr.ColumnName, getter);
                 }).ToList();
 
             foreach (var entity in entities)
             {
                 var row = data.NewRow();
-                foreach (var (property, getter, columnName) in properties)
+                foreach (var (columnName, getter) in properties)
                     row[columnName] = getter.GetClrValue(entity) ?? DBNull.Value;
                 data.Rows.Add(row);
             }
@@ -78,6 +85,51 @@ namespace Microsoft.EntityFrameworkCore
 
                 await bulk.WriteToServerAsync(data);
                 bulk.Close();
+            }
+        }
+
+        private class EntityClrPropertyGetter<T> : IClrPropertyGetter
+            where T : class
+        {
+            private readonly Func<IProperty, IEntityType, ValueGenerator> _factory;
+            private readonly IStateManager _stateManager;
+            private readonly IProperty _property;
+            private readonly IEntityType _entityType;
+
+            private readonly IClrPropertyGetter _internalGetter;
+
+            public EntityClrPropertyGetter(IStateManager stateManager, IProperty property)
+            {
+                _stateManager = stateManager;
+                _property = property;
+                _entityType = property.DeclaringEntityType;
+                _internalGetter = property.GetGetter();
+
+                if (property.RequiresValueGenerator())
+                {
+                    _factory = property.GetValueGeneratorFactory();
+                }
+            }
+
+            public object GetClrValue(object instance)
+            {
+                if (!(instance is T entity))
+                    throw new ArgumentException($"Not an instance of {typeof(T)}", nameof(instance));
+
+                if (_factory != null)
+                {
+                    var entry = new EntityEntry(_stateManager.GetOrCreateEntry(entity));
+                    return _factory(_property, _entityType).Next(entry);
+                }
+                else
+                {
+                    return _internalGetter.GetClrValue(instance);
+                }
+            }
+
+            public bool HasDefaultValue(object instance)
+            {
+                return _internalGetter.HasDefaultValue(instance);
             }
         }
     }

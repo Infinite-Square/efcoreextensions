@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Microsoft.EntityFrameworkCore
@@ -52,7 +53,7 @@ namespace Microsoft.EntityFrameworkCore
                 switch (type)
                 {
                     case JsonType.Null:
-                        return default(T);
+                        return default;
                     case JsonType.String:
                     case JsonType.Number:
                     case JsonType.Boolean:
@@ -68,14 +69,14 @@ namespace Microsoft.EntityFrameworkCore
             switch (type)
             {
                 case JsonType.Null:
-                    return default(T);
+                    return default;
                 case JsonType.String:
                 case JsonType.Number:
                 case JsonType.Boolean:
                     return token.Value<T>();
                 case JsonType.Object:
                 case JsonType.Array:
-                    return default(T);
+                    return default;
                 default:
                     throw new NotImplementedException();
             }
@@ -175,7 +176,7 @@ namespace Microsoft.EntityFrameworkCore
             return token;
         }
 
-        public static IEnumerable<JsonResult<T>> ValueFromOpenJson<T>(this IQueryable<JsonResult<T>> self, string json, string path = null)
+        public static IEnumerable<JsonResult<T>> ValueFromOpenJson<T>(this IQueryable<JsonResult<T>> _, string json, string path = null)
         {
             if (string.IsNullOrWhiteSpace(json))
                 return Enumerable.Empty<JsonResult<T>>();
@@ -218,7 +219,7 @@ namespace Microsoft.EntityFrameworkCore
                     {
                         Key = null,
                         Type = JsonType.Null,
-                        Value = default(T)
+                        Value = default
                     }
                 };
             }
@@ -260,5 +261,11 @@ namespace Microsoft.EntityFrameworkCore
             }
             else throw new ArgumentException("invalid json", nameof(json));
         }
+
+        public static int CountDistinct<T, TKey>(this IQueryable<T> source, Expression<Func<T, TKey>> keySelector)
+            => source.Select(keySelector).Distinct().Count();
+
+        public static int CountDistinct<T, TKey>(this IEnumerable<T> source, Func<T, TKey> keySelector)
+            => source.Select(keySelector).Distinct().Count();
     }
 }

@@ -1,7 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -10,231 +14,212 @@ namespace EFCore.Extensions.ChangeTracker
     public class ChangeTrackerWatcher
     {
         private readonly DbContext _dbContext;
-        private Dictionary<Type, Dictionary<string, EntrySnapshot>> _start;
-        private Dictionary<Type, Dictionary<string, EntrySnapshot>> _end;
+        private readonly List<EntrySnapshot> _snapshots;
+        private readonly List<EntityEntry> _newEntries;
 
         public ChangeTrackerWatcher(DbContext dbContext)
         {
             _dbContext = dbContext;
+            _snapshots = new List<EntrySnapshot>();
+            _newEntries = new List<EntityEntry>();
+            //_snapshots = dbContext.ChangeTracker
+            //    .Entries()
+            //    .Where(e => e.State != EntityState.Detached)
+            //    .Select(e => new EntrySnapshot(e))
+            //    .ToList();
         }
 
         public void Start()
         {
-            if (_start != null) throw new InvalidOperationException("start must be called one time only");
-            _start = CreateChangesSnapshot(_dbContext);
+            _snapshots.AddRange(_dbContext.ChangeTracker
+                .Entries()
+                .Where(e => e.State != EntityState.Detached)
+                .Select(e => new EntrySnapshot(e)));
         }
 
         public void End()
         {
-            if (_start == null) throw new InvalidOperationException("start must be called");
-            if (_end != null) throw new InvalidOperationException("end must be called one time only");
-            _end = CreateChangesSnapshot(_dbContext);
+            Stop();
+        }
+
+        public void Stop()
+        {
+            var j = 0;
+            foreach (var e in _dbContext.ChangeTracker.Entries())
+                if (j >= _snapshots.Count)
+                    _newEntries.Add(e);
+                else if (_snapshots[j].Stop(e))
+                    j++;
+                else if (e.State != EntityState.Detached)
+                    _newEntries.Add(e);
         }
 
         public void Revert()
         {
-            if (_start == null) throw new InvalidOperationException("start must be called");
-            if (_end == null) throw new InvalidOperationException("end must be called");
-
-            var begin = _start;
-            var end = _end;
-            foreach (var et in end)
-            {
-                if (begin.TryGetValue(et.Key, out var tb))
-                {
-                    foreach (var e in et.Value)
-                    {
-                        if (tb.TryGetValue(e.Key, out var bs))
-                        {
-                            var es = e.Value;
-
-                            if (bs.State == es.State)
-                            {
-                                switch (bs.State)
-                                {
-                                    case EntityState.Detached:
-                                    case EntityState.Unchanged:
-                                    case EntityState.Deleted:
-                                        // there is no changes on the entity
-                                        continue;
-                                    case EntityState.Modified:
-                                    case EntityState.Added:
-                                        // we have to check values
-                                        if (EntrySnapshot.ValuesAreEquals(bs, es))
-                                            continue;
-                                        break;
-                                    default:
-                                        throw new NotImplementedException();
-                                }
-                            }
-
-                            if (es.State != es.Entry.State)
-                            {
-                                // conflict
-                                throw new NotImplementedException();
-                            }
-
-                            bs.Reset(es);
-
-                            if (bs.State != es.Entry.State)
-                            {
-                                throw new NotImplementedException();
-                            }
-                        }
-                        else
-                        {
-                            // entry is not in target, we have to untrack it
-                            var entry = e.Value.Entry;
-                            entry.State = EntityState.Detached; // maybe unchanged in order to preserve new ref ?
-                        }
-                    }
-                }
-                else
-                {
-                    foreach (var e in et.Value)
-                    {
-                        e.Value.Entry.State = EntityState.Detached;
-                    }
-                }
-            }
-        }
-
-        private static Dictionary<Type, Dictionary<string, EntrySnapshot>> CreateChangesSnapshot(DbContext dbContext)
-        {
-            return dbContext.ChangeTracker
-                .Entries()
-                .GroupBy(k => k.Metadata.ClrType)
-                .ToDictionary(g => g.Key, g => g.ToDictionary(e => Key(e), e => new EntrySnapshot(e)));
-
-            string Key(EntityEntry entry)
-            {
-                var keys = entry.Metadata.FindPrimaryKey().Properties.ToDictionary(p => p.Name, p => (value: entry.Property(p.Name).CurrentValue, property: p));
-                var rawKey = keys.Count == 1
-                    ? keys.Values.First().value.ToString()
-                    : keys.Count > 1
-                        ? $"{{{string.Join(",", keys.OrderBy(k => k.Key).Select(k => $"\"{k.Key}\":\"{k.Value}\""))}}}"
-                        : null;
-                return rawKey;
-            }
+            foreach (var ne in _newEntries)
+                ne.State = EntityState.Detached;
+            foreach (var s in _snapshots)
+                s.Revert();
         }
 
         private class EntrySnapshot
         {
-            private readonly Dictionary<string, (bool IsModified, bool IsTemporary)> _modifiedMap;
+            private readonly ModifiedMap _modifiedMap;
 
             public EntrySnapshot(EntityEntry entityEntry)
             {
                 State = entityEntry.State;
-                Values = entityEntry.CurrentValues.Clone();//.ToObject();
+                Values = entityEntry.CurrentValues.Clone();
                 Entry = entityEntry;
-                //if (entityEntry.State == EntityState.Modified)
-                    _modifiedMap = entityEntry.Properties.ToDictionary(p => p.Metadata.Name, p => (p.IsModified, p.IsTemporary));
+                _modifiedMap = entityEntry.State == EntityState.Modified
+                    ? new ModifiedMap(entityEntry)
+                    : null;
             }
 
             public EntityState State { get; }
             public PropertyValues Values { get; }
             public EntityEntry Entry { get; }
 
-            public void Reset(EntrySnapshot snapshot)
+            private Changes _changes;
+
+            public bool Stop(EntityEntry entityEntry)
             {
-                var entry = snapshot.Entry;
-                switch (State)
-                {
-                    case EntityState.Deleted:
-                    case EntityState.Unchanged:
-                        entry.CurrentValues.SetValues(Values);
-                        entry.State = State;
-                        break;
-                    case EntityState.Modified:
-                        //entry.CurrentValues.SetValues(Values);
-                        entry.State = State;
-
-                        if (_modifiedMap == null) throw new InvalidOperationException();
-                        foreach (var p in entry.Properties)
-                        {
-                            if (_modifiedMap.TryGetValue(p.Metadata.Name, out var ps))
-                            {
-                                var bv = Values[p.Metadata];
-                                var ev = snapshot.Values[p.Metadata];
-                                //var cv = entry.CurrentValues[p.Metadata];
-
-                                var comparer = p.Metadata.GetValueComparer();
-                                if (comparer != null)
-                                {
-                                    if (!comparer.Equals(p.CurrentValue, ev))
-                                    {
-                                        //todo: handle conflict
-                                        throw new NotImplementedException();
-                                    }
-
-                                    if (!comparer.Equals(ev, bv))
-                                    {
-                                        //entry.CurrentValues[p.Metadata] = bv;
-                                        p.CurrentValue = bv;
-                                    }
-                                }
-                                else
-                                {
-                                    if (!Equals(p.CurrentValue, ev))
-                                    {
-                                        //todo: handle conflict
-                                        throw new NotImplementedException();
-                                    }
-
-                                    if (!Equals(ev, bv))
-                                    {
-                                        //entry.CurrentValues[p.Metadata] = bv;
-                                        p.CurrentValue = bv;
-                                    }
-                                }
-
-                                p.IsModified = ps.IsModified;
-                                p.IsTemporary = ps.IsTemporary;
-                            }
-                            else
-                            {
-                                throw new NotImplementedException();
-                            }
-                        }
-                        break;
-                    case EntityState.Added:
-                        entry.CurrentValues.SetValues(Values);
-                        entry.State = State;
-                        break;
-                    case EntityState.Detached:
-                    default:
-                        throw new NotImplementedException();
-                }
+                if (entityEntry.Entity != Entry.Entity) return false;
+                _changes = Changes.Create(this, entityEntry);
+                return true;
             }
 
-            public static bool ValuesAreEquals(EntrySnapshot a, EntrySnapshot b)
+            private class Changes
             {
-                //var ae = a.Entry;
-                //var be = b.Entry;
-                var avs = a.Values;
-                var bvs = b.Values;
+                private readonly List<IProperty> _values;
 
-                if (avs.Properties.Count != bvs.Properties.Count) return false;
+                public IEnumerable<IProperty> Values => _values;
 
-                foreach (var ap in avs.Properties)
+                public bool State { get; }
+
+                private Changes(bool state, List<IProperty> values)
                 {
-                    var av = avs[ap];
-                    var bv = bvs[ap];
+                    State = state;
+                    _values = values;
+                    //_map = map;
+                }
 
-                    var comparer = ap.GetValueComparer();
-                    if (comparer != null)
+                public static Changes Create(EntrySnapshot start, EntityEntry end)
+                {
+                    var count = end.CurrentValues.Properties.Count;
+                    var state = start.State != end.State;
+                    var changes = new List<IProperty>(count);
+                    //var modifiedMap = new List<IProperty>(count);
+
+                    if (start.State == EntityState.Modified)
                     {
-                        if (!comparer.Equals(av, bv))
-                            return false;
+                        // modifiedMap
+                        foreach (var p in end.CurrentValues.Properties)
+                        {
+                            var s = start.Values[p];
+                            var e = end.CurrentValues[p];
+                            if (!Equals(s, e))
+                                changes.Add(p);
+                            //else
+                            //{
+                            //    var (isModified, isTemporary) = start._modifiedMap[p.GetIndex()];
+                            //    var ep = end.Property(p.Name);
+                            //    if (ep.IsModified != isModified || ep.IsTemporary != isTemporary)
+                            //        modifiedMap.Add(p);
+                            //}
+                        }
                     }
                     else
                     {
-                        if (!Equals(av, bv))
-                            return false;
+                        foreach (var p in end.CurrentValues.Properties)
+                        {
+                            var s = start.Values[p];
+                            var e = end.CurrentValues[p];
+                            if (!Equals(s, e))
+                                changes.Add(p);
+                        }
+                    }
+
+                    if (!state
+                        && changes.Count <= 0
+                        //&& modifiedMap.Count <= 0
+                        )
+                        return null;
+
+                    return new Changes(state, changes/*, modifiedMap*/);
+                }
+            }
+
+            // this: begin, snapshot: end
+            public void Revert()
+            {
+                if (_changes == null) return;
+
+                if (_changes.State && State == EntityState.Modified)
+                {
+                    Entry.State = EntityState.Modified;
+                    foreach (var p in Entry.Properties)
+                    {
+                        if (_changes.Values.Contains(p.Metadata))
+                            p.CurrentValue = Values[p.Metadata];
+                        var (isModified, isTemporary) = _modifiedMap[p];
+                        p.IsModified = isModified;
+                        p.IsTemporary = isTemporary;
+                    }
+                }
+                else
+                {
+                    foreach (var p in _changes.Values)
+                        Entry.Property(p.Name).CurrentValue = Values[p];
+
+                    if (_changes.State)
+                        Entry.State = State;
+                }
+            }
+
+            private class Property
+            {
+                private readonly PropertyEntry _pe;
+
+                public string Name => _pe.Metadata.Name;
+                public bool IsModified { get; }
+                public bool IsTemporary { get; }
+
+                public Property(PropertyEntry pe)
+                {
+                    _pe = pe;
+                    IsModified = pe.IsModified;
+                    IsTemporary = pe.IsTemporary;
+                }
+            }
+
+            private class ModifiedMap
+            {
+                private readonly BitArray _state;
+
+                public ModifiedMap(EntityEntry entityEntry)
+                {
+                    var pc = entityEntry.Metadata.PropertyCount();
+                    _state = new BitArray(pc * 2);
+
+                    foreach (var p in entityEntry.Metadata.GetProperties())
+                    {
+                        var pe = entityEntry.Property(p.Name);
+                        var index = p.GetIndex();
+                        _state[index] = pe.IsModified;
+                        _state[index + 1] = pe.IsTemporary;
                     }
                 }
 
-                return true;
+                public (bool isModified, bool isTemporary) this[int index]
+                {
+                    get => (_state[index], _state[index + 1]);
+                }
+
+                public (bool isModified, bool isTemporary) this[PropertyEntry pe]
+                {
+                    get => this[pe.Metadata.GetOriginalValueIndex()];
+                }
             }
         }
     }

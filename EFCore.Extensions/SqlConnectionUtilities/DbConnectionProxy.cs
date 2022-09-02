@@ -1,5 +1,4 @@
-﻿using EFCore.Extensions.SqlCommandCatching;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -24,7 +23,7 @@ namespace EFCore.Extensions.SqlConnectionUtilities
     {
         private ConnectionState _state;
 
-        public DbConnectionProxy(string connectionString
+        protected DbConnectionProxy(string connectionString
             , ConnectionState state = ConnectionState.Closed)
         {
             ConnectionString = connectionString;
@@ -70,7 +69,7 @@ namespace EFCore.Extensions.SqlConnectionUtilities
         protected override DbCommand CreateDbCommand()
         {
             return UnderlyingConnection?.CreateCommand()
-                ?? new FakeDbCommand(this, CommandExecutor);
+                ?? new FakeDbCommand(/*this, */CommandExecutor);
         }
 
         private class FakeDbTransactionProxy : DbTransaction
@@ -96,14 +95,14 @@ namespace EFCore.Extensions.SqlConnectionUtilities
 
         private class FakeDbCommand : DbCommand
         {
-            private readonly DbConnectionProxy _connection;
+            //private readonly DbConnectionProxy _connection;
             private readonly ICommandExecutor _commandExecutor;
 
             private readonly FakeDbParameterCollection _parameters = new FakeDbParameterCollection();
 
-            public FakeDbCommand(DbConnectionProxy connection, ICommandExecutor commandExecutor)
+            public FakeDbCommand(/*DbConnectionProxy connection, */ICommandExecutor commandExecutor)
             {
-                _connection = connection;
+                //_connection = connection;
                 _commandExecutor = commandExecutor;
             }
 

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Reflection;
-using EFCore.Extensions.Query.ResultOperators.Internal;
+﻿using EFCore.Extensions.Query.ResultOperators.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
@@ -11,10 +7,15 @@ using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
+using Remotion.Linq.Clauses.ResultOperators;
+using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace EFCore.Extensions.Query.Internal
 {
-    public class ExtensionsRelationalResultOperatorHandler : RelationalResultOperatorHandler
+    public partial class ExtensionsRelationalResultOperatorHandler : RelationalResultOperatorHandler
     {
         private sealed class HandlerContext
         {
@@ -65,7 +66,7 @@ namespace EFCore.Extensions.Query.Internal
         private static readonly Dictionary<Type, Func<HandlerContext, Expression>>
             _resultHandlers = new Dictionary<Type, Func<HandlerContext, Expression>>
             {
-                { typeof(ValueFromOpenJsonOperator), HandleValueFromOpenJson }
+                [typeof(ValueFromOpenJsonOperator)] = HandleValueFromOpenJson
             };
 
         private readonly IModel _model;
@@ -120,12 +121,14 @@ namespace EFCore.Extensions.Query.Internal
                 return resultHandler(handlerContext);
             }
 
-            return base.HandleResultOperator(entityQueryModelVisitor, resultOperator, queryModel);
+            return resultOperator is CountDistinctResultOperator
+                ? HandleCountDistinct(entityQueryModelVisitor, queryModel)
+                : base.HandleResultOperator(entityQueryModelVisitor, resultOperator, queryModel);
         }
 
         private static Expression HandleValueFromOpenJson(HandlerContext handlerContext)
         {
-            var resultOperator = (ValueFromOpenJsonOperator)handlerContext.ResultOperator;
+            //var resultOperator = (ValueFromOpenJsonOperator)handlerContext.ResultOperator;
             return (Expression)_transformClientExpressionMethodInfo
                 .MakeGenericMethod(typeof(IEnumerable<JsonResult<string>>))
                 .Invoke(null, new object[] { handlerContext, false });

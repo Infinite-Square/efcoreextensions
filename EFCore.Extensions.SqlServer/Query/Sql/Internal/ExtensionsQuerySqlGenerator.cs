@@ -305,14 +305,22 @@ namespace EFCore.Extensions.SqlServer.Query.Sql.Internal
                                     table = joinSelect.GetTableForQuerySource(querySource);
                                     if (table != null)
                                     {
+                                        var test = false;
                                         while (table is SelectExpression selectTable)
                                         {
+                                            test = true;
                                             var tmp = selectTable.GetTableForQuerySource(querySource);
                                             if (tmp != null)
                                                 table = tmp;
                                         }
                                         if (prop.DeclaringEntityType.ClrType == table.QuerySource.ItemType)
+                                        {
+                                            if (!test)
+                                            {
+                                                table = joinSelect;
+                                            }
                                             break;
+                                        }
                                     }
                                 }
                                 else

@@ -27,29 +27,43 @@ namespace ConsoleApp1
         {
             Console.WriteLine("Hello World!");
             //MainAsyncOld2().Wait();
-            MainAsync().Wait();
+            //MainAsync().Wait();
+            TestMemoryIssuesAsync().Wait();
+            MainAsynTest().Wait();
             Console.ReadKey();
+        }
+
+        private static readonly string _connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False";
+
+        private static ServiceCollection GetServiceCollection()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddEntityFrameworkSqlServer();
+            serviceCollection
+                .AddDbContext<ApplicationContext>((sp, builder) =>
+                {
+                    builder.UseSqlServer(_connectionString);
+                    builder.UseInternalServiceProvider(sp);
+                    //builder.UseApplicationServiceProvider(sp);
+                    //builder.UseLoggerFactory(new LoggerFactory(new[]
+                    //{
+                    //    //new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
+                    //    new ConsoleLoggerProvider((category, level) => true, true)
+                    //}));
+                    //builder.UseExtensions(extensions =>
+                    //{
+                    //    extensions.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
+                    //    //extensions.UseInMemoryDatabase("inmemory");
+                    //    extensions.EnableSqlServerCommandCatcher();
+                    //    extensions.EnableSqlServerModificationCommandBatchEvents(() => new ModificationCommandBatchEvents());
+                    //});
+                }/*, ServiceLifetime.Transient*/);
+            return serviceCollection;
         }
 
         private static ServiceProvider BuildServiceProvider()
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection
-                .AddDbContext<ApplicationContext>(builder =>
-                {
-                    builder.UseLoggerFactory(new LoggerFactory(new[]
-                    {
-                        //new ConsoleLoggerProvider((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information, true)
-                        new ConsoleLoggerProvider((category, level) => true, true)
-                    }));
-                    builder.UseExtensions(extensions =>
-                    {
-                        extensions.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=testdbapp3;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
-                        //extensions.UseInMemoryDatabase("inmemory");
-                        extensions.EnableSqlServerCommandCatcher();
-                        extensions.EnableSqlServerModificationCommandBatchEvents(() => new ModificationCommandBatchEvents());
-                    });
-                }, ServiceLifetime.Transient);
+            var serviceCollection = GetServiceCollection();
             return serviceCollection.BuildServiceProvider();
         }
 
@@ -104,6 +118,114 @@ namespace ConsoleApp1
         public class Test
         {
             public DateTimeOffset? Date { get; set; }
+            public string Ab { get; set; }
+            public List<string> Flags { get; set; }
+        }
+
+        private static async Task TestMemoryIssuesAsync()
+        {
+            //var id = Guid.NewGuid();
+            var servies = GetServiceCollection();
+            //while(true)
+            for (var i = 0; i < 1000; i++)
+            {
+                using (var provider = servies.BuildServiceProvider())
+                using (var scope1 = provider.CreateScope())
+                using (var c1 = scope1.ServiceProvider.GetRequiredService<ApplicationContext>())
+                {
+                    //c1.Persons.Add(new Person
+                    //{
+                    //    Id = id,
+                    //    Name = "aa"
+                    //});
+                    //await c1.SaveChangesAsync();
+
+
+                    var persons = await c1.Persons.AsNoTracking().Take(10).ToListAsync();
+                    if (persons.Count <= 0)
+                        Console.WriteLine("aa");
+                }
+            }
+        }
+
+        private static async Task MainAsynTest()
+        {
+            using (var provider = BuildServiceProvider())
+            using (var scope1 = provider.CreateScope())
+            using (var c1 = scope1.ServiceProvider.GetRequiredService<ApplicationContext>())
+            {
+                Console.Clear();
+
+                while (true)
+                {
+                    {
+                        var t = new Test { Ab = "a", Flags = new List<string> { "n1", "n2" } };
+                        var pp = await c1.Persons
+                            .Where(p => !new[] { "n1", "n2" }.Contains(p.Name))
+                            .ToListAsync();
+                        //Console.WriteLine(pp);
+                    }
+
+                    {
+                        var t = new Test { Ab = "b", Flags = new List<string> { "a1", "a2", "a3" } };
+                        var pp = await c1.Persons
+                            .Where(p => !new[] { "n1", "n3" }.Contains(p.Name))
+                            .ToListAsync();
+                        //Console.WriteLine(pp);
+                    }
+
+                    //{
+                    //    var t = new Test { Ab = "a", Flags = new List<string> { "n1", "n2" } };
+                    //    var pp = await c1.Persons
+                    //        .In(t.Flags, p => p.Name)
+                    //        .ToListAsync();
+                    //    //Console.WriteLine(pp);
+                    //}
+
+                    //{
+                    //    var t = new Test { Ab = "b", Flags = new List<string> { "a1", "a2", "a3" } };
+                    //    var pp = await c1.Persons
+                    //        .In(t.Flags, p => p.Name)
+                    //        .ToListAsync();
+                    //    //Console.WriteLine(pp);
+                    //}
+
+                    //{
+                    //    var t = new Test { Ab = "a", Flags = new List<string> { "n1", "n2" } };
+                    //    var pp = await c1.Persons
+                    //        .Where(p => p.Name == t.Ab || !t.Flags.Contains(p.Name))
+                    //        .ToListAsync();
+                    //    //Console.WriteLine(pp);
+                    //}
+
+                    //{
+                    //    var t = new Test { Ab = "b", Flags = new List<string> { "a1", "a2", "a3" } };
+                    //    var pp = await c1.Persons
+                    //        .Where(p => p.Name == t.Ab || !t.Flags.Contains(p.Name))
+                    //        .ToListAsync();
+                    //    //Console.WriteLine(pp);
+                    //}
+
+                    await Task.Delay(500);
+                }
+            }
+
+            using (var provider = BuildServiceProvider())
+            using (var scope1 = provider.CreateScope())
+            using (var c1 = scope1.ServiceProvider.GetRequiredService<ApplicationContext>())
+            {
+                var json = c1.Json<string>();
+                var query = c1.Persons
+                    .Where(pp => pp.KindsList != null && json.ValueFromOpenJson(pp.KindsList, "$")
+                        .Select(p => p.Value)
+                        .Contains("kind1")
+                    );
+
+                var persons = await query.ToArrayAsync();
+                Console.WriteLine(persons);
+
+
+            }
         }
 
         private static async Task MainAsync()
@@ -349,6 +471,87 @@ namespace ConsoleApp1
                         throw new Exception();
                 }
             }
+        }
+
+
+    }
+
+    public static class CollectionPredicateBuilder
+    {
+        public static IQueryable<TSource> In<TSource, TCollection>(
+            this IQueryable<TSource> source,
+            IList<TCollection> collection,
+            Expression<Func<TSource, TCollection>> selector)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (collection == null)
+            {
+                throw new ArgumentNullException(nameof(collection));
+            }
+
+            if (selector == null)
+            {
+                throw new ArgumentNullException(nameof(selector));
+            }
+
+            var listType = typeof(List<TCollection>);
+            var addMethod = listType.GetMethod("Add");
+            var getItemMethod = listType.GetMethod("get_Item");
+            var containsMethod = listType.GetMethod("Contains");
+
+            // to-do: if index is > 2100 then we need to use constants
+            var initializers = collection
+                .Select((value, index) =>
+                    Expression.ElementInit(
+                        addMethod,
+                        new[]
+                        {
+                            Expression.Call(
+                                Expression.Constant(
+                                    collection,
+                                    listType),
+                                getItemMethod,
+                                new []
+                                {
+                                    Expression.Constant(
+                                        index,
+                                        typeof(int))
+                                })
+                        }))
+                        .ToList();
+
+            var bucket = 1;
+            while (initializers.Count > bucket)
+            {
+                bucket <<= 1;
+            }
+
+            bucket = bucket > 2098 ? 2098 : bucket;
+
+            if (initializers.Count > bucket)
+            {
+                throw new InvalidOperationException("In cannot be used with more than 2100 elements");
+            }
+
+            for (var index = initializers.Count; index < bucket; index++)
+            {
+                initializers.Add(initializers[index - 1]);
+            }
+
+            return source.Where(
+                Expression.Lambda<Func<TSource, bool>>(
+                    Expression.Call(
+                        Expression.ListInit(
+                            Expression.New(
+                                listType),
+                            initializers),
+                            containsMethod,
+                        selector.Body),
+                    selector.Parameters));
         }
     }
 }
