@@ -35,13 +35,10 @@ namespace EFCore.Extensions.SqlServer.UnitTests
 
         public async Task InitializeAsync()
         {
-            using (var ctx = Services.GetRequiredService<DataContext>())
-            {
-                await ctx.Database.EnsureDeletedAsync();
-                await ctx.Database.MigrateAsync();
-
-                //await ctx.Database.EnsureCreatedAsync();
-            }
+            using var ctx = Services.GetRequiredService<DataContext>();
+            await ctx.Database.EnsureDeletedAsync();
+            await ctx.Database.MigrateAsync();
+            //await ctx.Database.EnsureCreatedAsync();
         }
 
         public void Dispose()

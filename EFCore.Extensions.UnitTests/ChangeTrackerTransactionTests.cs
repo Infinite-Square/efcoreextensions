@@ -235,7 +235,7 @@ namespace EFCore.Extensions.UnitTests
             Assert.False(dbContext.ChangeTracker.HasChanges());
         }
 
-        private static TestDbContext GetTestDbContext([CallerMemberName] string dbName = null)
+        private static TestDbContext GetTestDbContext([CallerMemberName] string? dbName = null)
         {
             var options = new DbContextOptionsBuilder<TestDbContext>()
                 .UseInMemoryDatabase(dbName ?? throw new ArgumentNullException(nameof(dbName)))
@@ -245,26 +245,34 @@ namespace EFCore.Extensions.UnitTests
 
         private class TestDbContext : DbContext
         {
-            public DbSet<OneEntity> OneEntities { get; set; }
-            public DbSet<SecondEntity> SecondEntities { get; set; }
+            public DbSet<OneEntity> OneEntities { get; set; } = default!;
+            public DbSet<SecondEntity> SecondEntities { get; set; } = default!;
 
             public TestDbContext(DbContextOptions<TestDbContext> options)
                 : base(options)
             {
+            }
+
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
+            {
+                base.OnModelCreating(modelBuilder);
+
+                modelBuilder.Entity<OneEntity>();
+                modelBuilder.Entity<SecondEntity>();
             }
         }
 
         private class OneEntity
         {
             public int Id { get; set; }
-            public string ValueString { get; set; }
+            public string? ValueString { get; set; }
             public int ValueInt { get; set; }
         }
 
         private class SecondEntity
         {
             public int Id { get; set; }
-            public string ValueString { get; set; }
+            public string? ValueString { get; set; }
             public int ValueInt { get; set; }
         }
     }
